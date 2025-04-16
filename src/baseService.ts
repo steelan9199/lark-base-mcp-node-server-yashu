@@ -193,4 +193,69 @@ export class BaseService implements IBaseService {
     //   },
     // });
   }
+
+  // private async validateAndGetSearchFields(
+  //   baseId: string,
+  //   tableId: string,
+  //   requestedFieldIds?: string[],
+  // ): Promise<string[]> {
+  //   const schema = await this.getBaseSchema(baseId);
+  //   const table = schema.tables.find((t) => t.id === tableId);
+  //   if (!table) {
+  //     throw new Error(`Table ${tableId} not found in base ${baseId}`);
+  //   }
+
+  //   const searchableFieldTypes = [
+  //     'singleLineText',
+  //     'multilineText',
+  //     'richText',
+  //     'email',
+  //     'url',
+  //     'phoneNumber',
+  //   ];
+
+  //   const searchableFields = table.fields
+  //     .filter((field) => searchableFieldTypes.includes(field.type))
+  //     .map((field) => field.id);
+
+  //   if (searchableFields.length === 0) {
+  //     throw new Error('No text fields available to search');
+  //   }
+
+  //   // If specific fields were requested, validate they exist and are text fields
+  //   if (requestedFieldIds && requestedFieldIds.length > 0) {
+  //     // Check if any requested fields were invalid
+  //     const invalidFields = requestedFieldIds.filter((fieldId) => !searchableFields.includes(fieldId));
+  //     if (invalidFields.length > 0) {
+  //       throw new Error(`Invalid fields requested: ${invalidFields.join(', ')}`);
+  //     }
+
+  //     return requestedFieldIds;
+  //   }
+
+  //   return searchableFields;
+  // }
+
+  // async searchRecords(
+  //   baseId: string,
+  //   tableId: string,
+  //   searchTerm: string,
+  //   fieldIds?: string[],
+  //   maxRecords?: number,
+  // ): Promise<AirtableRecord[]> {
+  //   // Validate and get search fields
+  //   const searchFields = await this.validateAndGetSearchFields(baseId, tableId, fieldIds);
+
+  //   // Escape the search term to prevent formula injection
+  //   const escapedTerm = searchTerm.replace(/["\\]/g, '\\$&');
+
+  //   // Build OR(FIND("term", field1), FIND("term", field2), ...)
+  //   const filterByFormula = `OR(${
+  //     searchFields
+  //       .map((fieldId) => `FIND("${escapedTerm}", {${fieldId}})`)
+  //       .join(',')
+  //   })`;
+
+  //   return this.listRecords(baseId, tableId, { maxRecords, filterByFormula });
+  // }
 }

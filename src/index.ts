@@ -1,41 +1,43 @@
 #!/usr/bin/env node
 
-import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
-import { BaseService } from './baseService.js';
-import { AirtableMCPServer } from './mcpServer.js';
+import { SSEServerTransport } from "@modelcontextprotocol/sdk/server/sse.js";
+import { BaseService } from "./baseService.js";
+import { AirtableMCPServer } from "./mcpServer.js";
+import express from "express";
 
 const main = async () => {
-
-// export const main = async () => {
-  // if (apiKey) {
-  //   // Deprecation warning
-  //   console.warn(
-  //     'warning (airtable-mcp-server): Passing in an API key as a command-line argument is deprecated and may be removed in a future version. Instead, set the `AIRTABLE_API_KEY` environment variable. See https://github.com/domdomegg/airtable-mcp-server/blob/master/README.md#usage for an example with Claude Desktop.',
-  //   );
-  // }
-
-  // const airtableService = new BaseService(
-  //   'VX0QbQw4gat8zHsi8qfcEOzAntc',
-  //   'pt-zk5G1P1K2ZJ9MVGz_MJFis2mpFpfg2j8Z-rz_GeWAQAAEwABhxNAwKW1FBk0',
-  // );
-
-  // const baseSerivce = new BaseService(
-  //   'PIkWbwo80aezlhsaX9uc5GIAnfe',
-  //   'pt-zk5G1P1K2ZJ9MVGz_MJFis2mpFpfg2j8Z-rz_GeWAQAAEwABhxNAwKW1FBk0',
-  // );
   const baseSerivce = new BaseService(
-    // 'WFycwS5MEinQZOkP8mRc2AGNndc',
-    'VX0QbQw4gat8zHsi8qfcEOzAntc',
-    'pt-RoQSssJqs5IVCZKBBN52dS11bNVfg2j8ZwRT_meWAQAAEwABhwQARh_oy5k5',
-    // 'pt-zk5G1P1K2ZJ9MVGz_MJFis2mpFpfg2j8Z-rz_GeWAQAAEwABhxNAwKW1FBk0',
+    "VX0QbQw4gat8zHsi8qfcEOzAntc",
+    "pt-RoQSssJqs5IVCZKBBN52dS11bNVfg2j8ZwRT_meWAQAAEwABhwQARh_oy5k5"
   );
   const server = new AirtableMCPServer(baseSerivce);
-  const transport = new StdioServerTransport();
-  await server.connect(transport);
+
+  const app = express();
+
+  const transports: { [sessionId: string]: SSEServerTransport } = {};
+
+  app.get("/sse", async (_, res) => {
+    const transport = new SSEServerTransport("/messages", res);
+    transports[transport.sessionId] = transport;
+    res.on("close", () => {
+      delete transports[transport.sessionId];
+    });
+    await server.connect(transport);
+  });
+
+  app.post("/messages", async (req, res) => {
+    const sessionId = req.query.sessionId as string;
+    const transport = transports[sessionId];
+    if (transport) {
+      await transport.handlePostMessage(req, res);
+    } else {
+      res.status(400).send("No transport found for sessionId");
+    }
+  });
+
+  app.listen(3001, () => {
+    console.log("Server is running on http://localhost:3001");
+  });
 };
 
-// Only call main directly if this file is being run directly (not imported)
-// if (import.meta.url === import.meta.resolve('./index.js')) {
-//   await main();
-// }
 await main();

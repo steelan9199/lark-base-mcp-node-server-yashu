@@ -179,6 +179,18 @@ export class AirtableMCPServer implements IAirtableMCPServer {
           });
         }
 
+        // case 'search_records': {
+        //   const args = SearchRecordsArgsSchema.parse(request.params.arguments);
+        //   const records = await this.airtableService.searchRecords(
+        //     args.baseId,
+        //     args.tableId,
+        //     args.searchTerm,
+        //     args.fieldIds,
+        //     args.maxRecords,
+        //   );
+        //   return formatToolResponse(records);
+        // }
+
         default: {
           throw new Error(`Unknown tool: ${request.params.name}`);
         }
