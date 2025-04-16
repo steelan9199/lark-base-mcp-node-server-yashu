@@ -5,6 +5,8 @@ import { BaseService } from "./baseService.js";
 import { AirtableMCPServer } from "./mcpServer.js";
 import express from "express";
 
+
+const PORT = 36951;
 const main = async () => {
   const baseSerivce = new BaseService(
     "VX0QbQw4gat8zHsi8qfcEOzAntc",
@@ -35,8 +37,9 @@ const main = async () => {
     }
   });
 
-  app.listen(3001, () => {
-    console.log("Server is running on http://localhost:3001");
+
+  app.listen(PORT, () => {
+    console.log(`Server is running on http://localhost:${PORT}`);
   });
 };
 
