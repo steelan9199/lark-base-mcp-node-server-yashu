@@ -6,7 +6,7 @@ import { AirtableMCPServer } from "./mcpServer.js";
 import express from "express";
 
 
-const PORT = 36951;
+const PORT = process.env.PORT || 3001;
 const main = async () => {
   const baseSerivce = new BaseService(
     "VX0QbQw4gat8zHsi8qfcEOzAntc",
