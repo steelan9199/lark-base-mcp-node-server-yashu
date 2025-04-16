@@ -13,6 +13,5 @@ rm -rf node_modules
 
 # # install dependencies
 # export npm_config_dist_url=https://bnpm.bytedance.net/mirrors/node/
-# npm install --registry http://bnpm.byted.org
-npm install
+npm install --registry https://registry.npmjs.org
 npm run build
