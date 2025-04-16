@@ -6,6 +6,11 @@ import {
   FieldType,
 } from './types.js';
 
+import fs from 'fs';
+function logToFile(message: any) {
+  // fs.appendFileSync('debug.log', JSON.stringify(message) + '\n');
+}
+
 const maxDataNumber = 100;
 
 const optionHandler = (value: any, options: any[]) => {
@@ -85,11 +90,12 @@ export class BaseService implements IBaseService {
     this.client = new BaseClient({
       appToken: baseToken,
       personalBaseToken,
+      // domain: 'https://fsopen.bytedance.net'
     });
   }
 
   async listRecords(table_id: string): Promise<AirtableRecord[]> {
-    console.log(111);
+    // console.log(111);
     const records = [];
     const data = await this.client.base.appTableRecord.list({
       path: {
@@ -99,39 +105,38 @@ export class BaseService implements IBaseService {
         page_size: 10,
       },
     });
+
+    logToFile('listRecords'+JSON.stringify(data));  
     return data.data?.items ?? [];
-    // for await (const item of await this.client.base.appTableRecord.listWithIterator({
-    //   params: {
-    //     page_size: 20,
-    //   },
-    //   path: {
-    //     table_id,
-    //   },
-    // })) {
-    //   if (item?.items) {
-    //     records.push(...item.items);
-    //   }
-    //   if (records.length >= maxDataNumber) {
-    //     break;
-    //   }
-    // }
-    return records;
   }
 
   async listTables() {
     const tables = [];
-    for await (const item of await this.client.base.appTable.listWithIterator({
-      params: {
-        page_size: 20,
-      },
-    })) {
-      if (item?.items) {
-        tables.push(...item.items);
+    // const result = await this.client.base.appTable.list({
+    //   params: {
+    //     page_size: 20,
+    //   },
+    // }).catch((err) => {
+    //   logToFile('listTables error: '+JSON.stringify(err)); 
+    // });
+
+    try {
+      for await (const item of await this.client.base.appTable.listWithIterator({
+        params: {
+          page_size: 20,
+        },
+      })) {
+        if (item?.items) {
+          tables.push(...item.items);
+        }
+        if (tables.length >= maxDataNumber) {
+          break;
+        }
       }
-      if (tables.length >= maxDataNumber) {
-        break;
-      }
+    } catch(err) {
+      logToFile('listTables error: '+JSON.stringify(err)); 
     }
+    logToFile('listTables tables: '+JSON.stringify(tables)); 
 
     return {
       tables,
@@ -179,5 +184,13 @@ export class BaseService implements IBaseService {
     });
 
     return data?.record || { fields: {} };
+  }
+
+  async getAppToken(wikiToken: string) {
+    // const { data } = await this.client.base.app.get({
+    //   params: {
+    //     wiki_token: wikiToken,
+    //   },
+    // });
   }
 }

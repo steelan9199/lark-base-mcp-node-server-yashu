@@ -108,6 +108,10 @@ export const ListRecordsArgsSchema = z.object({
   tableId: z.string(),
 });
 
+export const GetAppTokenArgsSchema = z.object({
+  wikiToken: z.string(),
+});
+
 export const SearchRecordsArgsSchema = z.object({
   baseId: z.string(),
   tableId: z.string(),
@@ -139,8 +143,8 @@ export const DescribeTableArgsSchema = z.object({
 });
 
 export const ListTablesArgsSchema = z.object({
-  baseId: z.string(),
-  detailLevel: TableDetailLevelSchema.optional().default('full'),
+  // baseId: z.string(),
+  // detailLevel: TableDetailLevelSchema.optional().default('full'),
 });
 
 export const GetRecordArgsSchema = z.object({

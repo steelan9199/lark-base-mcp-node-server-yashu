@@ -25,7 +25,9 @@ import {
   CreateFieldArgsSchema,
   UpdateFieldArgsSchema,
   SearchRecordsArgsSchema,
-  IAirtableService,
+  GetAppTokenArgsSchema,
+  // IAirtableService,
+  IBaseService,
   IAirtableMCPServer,
 } from './types.js';
 
@@ -57,11 +59,11 @@ const formatToolResponse = (data: unknown, isError = false): CallToolResult => {
 export class AirtableMCPServer implements IAirtableMCPServer {
   private server: Server;
 
-  private airtableService: IAirtableService;
+  private airtableService: IBaseService;
 
   private readonly SCHEMA_PATH = 'schema';
 
-  constructor(airtableService: IAirtableService) {
+  constructor(airtableService: IBaseService) {
     this.airtableService = airtableService;
     this.server = new Server(
       {
@@ -129,6 +131,16 @@ export class AirtableMCPServer implements IAirtableMCPServer {
           description: 'List records from a table',
           inputSchema: getInputSchema(ListRecordsArgsSchema),
         },
+        // {
+        //   name: 'get_app_token',
+        //   description: 'Get app token from wiki token',
+        //   inputSchema: getInputSchema(GetAppTokenArgsSchema),
+        // },
+        {
+          name: 'list_tables',
+          description: 'List tables from a app',
+          inputSchema: getInputSchema(ListTablesArgsSchema),
+        },
         {
           name: 'create_record',
           description: 'Create a new record in a table',
@@ -141,11 +153,21 @@ export class AirtableMCPServer implements IAirtableMCPServer {
   private async handleCallTool(request: z.infer<typeof CallToolRequestSchema>): Promise<CallToolResult> {
     try {
       switch (request.params.name) {
+        case 'list_tables': {
+          // const args = ListRecordsArgsSchema.parse(request.params.arguments);
+          const records = await this.airtableService.listTables();
+          return formatToolResponse(records);
+        }
         case 'list_records': {
           const args = ListRecordsArgsSchema.parse(request.params.arguments);
           const records = await this.airtableService.listRecords(args.tableId);
-          return formatToolResponse(records, true);
+          return formatToolResponse(records);
         }
+        // case 'get_app_token': {
+        //   const args = GetAppTokenArgsSchema.parse(request.params.arguments);
+        //   const appToken = await this.airtableService.createRecord(args.wikiToken);
+        //   return formatToolResponse(appToken);
+        // }
         case 'create_record': {
           const args = CreateRecordArgsSchema.parse(request.params.arguments);
           const record = await this.airtableService.createRecord(args.tableId, args.fields);
