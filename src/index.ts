@@ -4,73 +4,56 @@ import { SSEServerTransport } from "@modelcontextprotocol/sdk/server/sse.js";
 import { BaseService } from "./baseService.js";
 import { AirtableMCPServer } from "./mcpServer.js";
 import express, { Request, Response } from "express";
-
+import { sessionManager } from "./sessionManager.js";
 
 const PORT = process.env.PORT || 3001;
-const sseConnections = new Map<string, { res: Response, intervalId: NodeJS.Timeout }>();
 const KEEP_ALIVE_INTERVAL_MS = 25000; // Send keep-alive every 25 seconds
 
 const main = async () => {
-  const baseSerivce = new BaseService(
-    "VX0QbQw4gat8zHsi8qfcEOzAntc",
-    "pt-RoQSssJqs5IVCZKBBN52dS11bNVfg2j8ZwRT_meWAQAAEwABhwQARh_oy5k5"
-  );
+  const baseSerivce = new BaseService();
   const server = new AirtableMCPServer(baseSerivce);
 
   const app = express();
 
-  const transports: { [sessionId: string]: SSEServerTransport } = {};
+  app.get("/sse", async (req: Request, res: Response) => {
+    console.log(`[SSE Connection] Client connected`);
 
-  // app.get("/sse", async (_, res) => {
-  //   const transport = new SSEServerTransport("/messages", res);
-  //   transports[transport.sessionId] = transport;
-  //   res.on("close", () => {
-  //     delete transports[transport.sessionId];
-  //   });
-  //   await server.connect(transport);
-  // });
+    const { appToken, personalBaseToken } = req.query;
+    
+    if (!appToken || !personalBaseToken) {
+      res.status(400).send('Missing appToken or personalBaseToken');
+      return;
+    }
 
-  app.get("/sse", async (_: Request, res: Response) => {
     const transport = new SSEServerTransport('/messages', res)
-    const sessionId = transport.sessionId; // Get session ID from transport
-    transports[sessionId] = transport;
+    const sessionId = transport.sessionId;
+    
+    // Initialize session with transport
+    sessionManager.createSession(sessionId, appToken as string, personalBaseToken as string, transport);
   
     // Start keep-alive ping
     const intervalId = setInterval(() => {
-      if (sseConnections.has(sessionId) && !res.writableEnded) {
+      if (!res.writableEnded) {
         res.write(': keepalive\n\n');
       } else {
-        // Should not happen if close handler is working, but clear just in case
         clearInterval(intervalId);
-        sseConnections.delete(sessionId);
       }
     }, KEEP_ALIVE_INTERVAL_MS);
   
-    // Store connection details
-    sseConnections.set(sessionId, { res, intervalId });
     console.log(`[SSE Connection] Client connected: ${sessionId}, starting keep-alive.`);
   
     res.on("close", () => {
       console.log(`[SSE Connection] Client disconnected: ${sessionId}, stopping keep-alive.`);
-      // Clean up transport
-      delete transports[sessionId];
-      // Clean up keep-alive interval
-      const connection = sseConnections.get(sessionId);
-      if (connection) {
-        clearInterval(connection.intervalId);
-        sseConnections.delete(sessionId);
-      }
+      clearInterval(intervalId);
+      sessionManager.deleteSession(sessionId);
     });
   
-    // Connect server to transport *after* setting up handlers
     try {
       await server.connect(transport)
     } catch (error) {
       console.error(`[SSE Connection] Error connecting server to transport for ${sessionId}:`, error);
-      // Ensure cleanup happens even if connect fails
       clearInterval(intervalId);
-      sseConnections.delete(sessionId);
-      delete transports[sessionId];
+      sessionManager.deleteSession(sessionId);
       if (!res.writableEnded) {
         res.status(500).end('Failed to connect MCP server to transport');
       }
@@ -79,18 +62,17 @@ const main = async () => {
 
   app.post("/messages", async (req, res) => {
     const sessionId = req.query.sessionId as string;
-    const transport = transports[sessionId];
-    if (transport) {
+    const transport = sessionManager.getTransport(sessionId);
+    if (transport instanceof SSEServerTransport) {
       await transport.handlePostMessage(req, res);
     } else {
       res.status(400).send("No transport found for sessionId");
     }
   });
 
-
   app.listen(PORT, () => {
     console.log(`Server is running on http://localhost:${PORT}`);
   });
 };
 
-await main();
+main().catch(console.error);

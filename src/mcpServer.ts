@@ -107,7 +107,7 @@ export class AirtableMCPServer implements IAirtableMCPServer {
   }
 
   private async handleReadResource(request: z.infer<typeof ReadResourceRequestSchema>): Promise<ReadResourceResult> {
-    const { uri } = request.params;
+    const { uri, sessionId } = request.params;
     
     // Handle text resource
     if (uri === "text://field-info-prompt") {
@@ -145,7 +145,7 @@ export class AirtableMCPServer implements IAirtableMCPServer {
       throw new Error('Invalid resource URI');
     }
     const [, baseId, tableId] = match;
-    const fields = await this.airtableService.listFields(tableId);
+    const fields = await this.airtableService.listFields(sessionId as string, tableId);
     return {
       contents: [
         {
@@ -252,48 +252,53 @@ export class AirtableMCPServer implements IAirtableMCPServer {
 
   private async handleCallTool(request: z.infer<typeof CallToolRequestSchema>): Promise<CallToolResult> {
     try {
+      const sessionId = this.server.transport?.sessionId;
+      if (!sessionId) {
+        throw new Error('Session ID is required');
+      }
+      
       switch (request.params.name) {
         case 'list_tables': {
-          const records = await this.airtableService.listTables();
+          const records = await this.airtableService.listTables(sessionId as string);
           return formatToolResponse(records);
         }
         case 'create_table': {
           const args = CreateTableArgsSchema.parse(request.params.arguments);
-          const table = await this.airtableService.createTable(args);
+          const table = await this.airtableService.createTable(sessionId as string, args);
           return formatToolResponse(table);
         }
         case 'update_table': {
           const args = UpdateTableArgsSchema.parse(request.params.arguments);
-          const table = await this.airtableService.updateTable(args.tableId, args.name);
+          const table = await this.airtableService.updateTable(sessionId as string, args.tableId, args.name);
           return formatToolResponse(table);
         }
         case 'delete_table': {
           const args = z.object({
             tableId: z.string(),
           }).parse(request.params.arguments);
-          const table = await this.airtableService.deleteTable(args.tableId);
+          const table = await this.airtableService.deleteTable(sessionId as string, args.tableId);
           return formatToolResponse(table);
         }
         case 'list_records': {
           const args = ListRecordsArgsSchema.parse(request.params.arguments);
-          const records = await this.airtableService.listRecords(args.tableId);
+          const records = await this.airtableService.listRecords(sessionId as string, args.tableId, (args as any).options);
           return formatToolResponse(records);
         }
         case 'list_fields': {
           const args = z.object({
             tableId: z.string(),
           }).parse(request.params.arguments);
-          const fields = await this.airtableService.listFields(args.tableId);
+          const fields = await this.airtableService.listFields(sessionId as string, args.tableId);
           return formatToolResponse(fields);
         }
         case 'create_field': {
           const args = CreateFieldArgsSchema.parse(request.params.arguments);
-          const field = await this.airtableService.createField(args.tableId, args.nested.field);
+          const field = await this.airtableService.createField(sessionId as string, args.tableId, args.nested.field);
           return formatToolResponse(field);
         }
         case 'update_field': {
           const args = UpdateFieldArgsSchema.parse(request.params.arguments);
-          const field = await this.airtableService.updateField(args.tableId, args.fieldId, args.nested.field);
+          const field = await this.airtableService.updateField(sessionId as string, args.tableId, args.fieldId, args.nested.field);
           return formatToolResponse(field);
         }
         case 'delete_field': {
@@ -301,12 +306,12 @@ export class AirtableMCPServer implements IAirtableMCPServer {
             tableId: z.string(),
             fieldId: z.string(),
           }).parse(request.params.arguments);
-          const { success } = await this.airtableService.deleteField(args.tableId, args.fieldId);
+          const { success } = await this.airtableService.deleteField(sessionId as string, args.tableId, args.fieldId);
           return formatToolResponse({ success });
         }
         case 'create_record': {
           const args = CreateRecordArgsSchema.parse(request.params.arguments);
-          const record = await this.airtableService.createRecord(args.tableId, args.fields);
+          const record = await this.airtableService.createRecord(sessionId as string, args.tableId, args.fields);
           return formatToolResponse(record);
         }
         case 'delete_record': {
@@ -314,7 +319,7 @@ export class AirtableMCPServer implements IAirtableMCPServer {
             tableId: z.string(),
             recordId: z.string(),
           }).parse(request.params.arguments);
-          const { success } = await this.airtableService.deleteRecord(args.tableId, args.recordId);
+          const { success } = await this.airtableService.deleteRecord(sessionId as string, args.tableId, args.recordId);
           return formatToolResponse({ success });
         }
         case 'update_record': {
@@ -323,7 +328,7 @@ export class AirtableMCPServer implements IAirtableMCPServer {
             recordId: z.string(),
             fields: z.record(z.any()),
           }).parse(request.params.arguments);
-          const record = await this.airtableService.updateRecord(args.tableId, args.recordId, args.fields);
+          const record = await this.airtableService.updateRecord(sessionId as string, args.tableId, args.recordId, args.fields);
           return formatToolResponse({
             id: record.record_id,
             modifiedBy: record.last_modified_by?.name,
@@ -336,16 +341,10 @@ export class AirtableMCPServer implements IAirtableMCPServer {
             tableId: z.string(),
             recordId: z.string(),
           }).parse(request.params.arguments);
-          const record = await this.airtableService.getRecord(args.tableId, args.recordId);
+          const record = await this.airtableService.getRecord(sessionId as string, args.tableId, args.recordId);
           return formatToolResponse(record);
         }
-
-        case 'create_table': {
-          const args = CreateTableArgsSchema.parse(request.params.arguments);
-          const table = await this.airtableService.createTable(args);
-          return formatToolResponse(table);
-        }
-        default: {
+        default: {  
           throw new Error(`Unknown tool: ${request.params.name}`);
         }
       }

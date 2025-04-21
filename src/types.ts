@@ -294,22 +294,22 @@ export interface BaseServiceResponse {
 }
 
 export interface IBaseService {
-  listRecords(tableId: string, options?: ListRecordsOptions): Promise<AirtableRecord[]>;
-  listTables(): Promise<{
+  listRecords(sessionId: string, tableId: string, options?: ListRecordsOptions): Promise<AirtableRecord[]>;
+  listTables(sessionId?: string): Promise<{
     tables: ListTablesResponse,
     baseToken: string,
   }>;
-  createTable(data: CreateTable): Promise<CreateTableResponse>;
-  updateTable(tableId: string, name: string): Promise<{ name?: string }>; 
-  deleteTable(tableId: string): Promise<BaseServiceResponse>;
-  listFields(tableId: string): Promise<Field[]>;
-  createField(tableId: string, field: Field): Promise<Field>;
-  updateField(tableId: string, fieldId: string, field: Field): Promise<Field>;
-  deleteField(tableId: string, fieldId: string): Promise<BaseServiceResponse>;
-  createRecord(tableId: string, fields: TCreateRecordArgs): Promise<AirtableRecord>;
-  updateRecord(tableId: string, recordId: string, fields: TCreateRecordArgs): Promise<AirtableRecord>;
-  deleteRecord(tableId: string, recordId: string): Promise<BaseServiceResponse>;
-  getRecord(tableId: string, recordId: string): Promise<AirtableRecord | null>;
+  createTable(sessionId: string, data: CreateTable): Promise<CreateTableResponse>;
+  updateTable(sessionId: string, tableId: string, name: string): Promise<{ name?: string }>; 
+  deleteTable(sessionId: string, tableId: string): Promise<BaseServiceResponse>;
+  listFields(sessionId: string, tableId: string): Promise<Field[]>;
+  createField(sessionId: string, tableId: string, field: Field): Promise<Field>;
+  updateField(sessionId: string, tableId: string, fieldId: string, field: Field): Promise<Field>;
+  deleteField(sessionId: string, tableId: string, fieldId: string): Promise<BaseServiceResponse>;
+  createRecord(sessionId: string, tableId: string, fields: TCreateRecordArgs): Promise<AirtableRecord>;
+  updateRecord(sessionId: string, tableId: string, recordId: string, fields: TCreateRecordArgs): Promise<AirtableRecord>;
+  deleteRecord(sessionId: string, tableId: string, recordId: string): Promise<BaseServiceResponse>;
+  getRecord(sessionId: string, tableId: string, recordId: string): Promise<AirtableRecord | null>;
 }
 
 export interface IAirtableMCPServer {
