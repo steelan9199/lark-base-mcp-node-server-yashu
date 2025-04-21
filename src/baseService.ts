@@ -3,13 +3,11 @@
 import { BaseClient } from '@lark-base-open/node-sdk';
 import {
   IBaseService, AirtableRecord, TCreateRecordArgs, FieldSet, Field,
-  FieldType,
+  FieldType, ListTablesResponse, ListRecordsOptions,
+  Table,
+  CreateTable,
+  CreateTableResponse
 } from './types.js';
-
-import fs from 'fs';
-function logToFile(message: any) {
-  // fs.appendFileSync('debug.log', JSON.stringify(message) + '\n');
-}
 
 const maxDataNumber = 100;
 
@@ -90,25 +88,32 @@ export class BaseService implements IBaseService {
     this.client = new BaseClient({
       appToken: baseToken,
       personalBaseToken,
-      // domain: 'https://fsopen.bytedance.net'
     });
   }
 
-  async listRecords(table_id: string): Promise<AirtableRecord[]> {
-    // console.log(111);
-    const records = [];
+  async listRecords(table_id: string, options?: ListRecordsOptions): Promise<AirtableRecord[]> {
+    const params: any = {
+      page_size: options?.maxRecords || 10,
+    };
+    
+    if (options?.filterByFormula) {
+      params.filter = options.filterByFormula;
+    }
+
     const data = await this.client.base.appTableRecord.list({
       path: {
         table_id,
       },
-      params: {
-        page_size: 10,
-      },
+      params,
     });
 
-    logToFile('listRecords'+JSON.stringify(data));  
+    if (data.code != 0) {
+      throw new Error(`Failed to list records: ${data.msg}`);
+    }
+
     return data.data?.items ?? [];
   }
+
 
   async listTables() {
     const tables = [];
@@ -120,23 +125,18 @@ export class BaseService implements IBaseService {
     //   logToFile('listTables error: '+JSON.stringify(err)); 
     // });
 
-    try {
-      for await (const item of await this.client.base.appTable.listWithIterator({
-        params: {
-          page_size: 20,
-        },
-      })) {
-        if (item?.items) {
-          tables.push(...item.items);
-        }
-        if (tables.length >= maxDataNumber) {
-          break;
-        }
+    for await (const item of await this.client.base.appTable.listWithIterator({
+      params: {
+        page_size: 20,
+      },
+    })) {
+      if (item?.items) {
+        tables.push(...item.items);
       }
-    } catch(err) {
-      logToFile('listTables error: '+JSON.stringify(err)); 
+      if (tables.length >= maxDataNumber) {
+        break;
+      }
     }
-    logToFile('listTables tables: '+JSON.stringify(tables)); 
 
     return {
       tables,
@@ -144,7 +144,38 @@ export class BaseService implements IBaseService {
     };
   }
 
-  async listFields(table_id: string) {
+  async deleteTable(tableId: string) {
+    const { data, code, msg } = await this.client.base.appTable.delete({
+      path: {
+        table_id: tableId,
+      },
+    });
+
+    if (code != 0) {
+      throw new Error(`Failed to delete table: ${msg}`);
+    }
+
+    return { success: true };
+  }
+
+  async updateTable(tableId: string, name: string): Promise<{ name?: string }> {
+    const { data, code, msg } = await this.client.base.appTable.patch({
+      data: {
+        name,
+      },
+      path: {
+        table_id: tableId,
+      },
+    });
+
+    if (code != 0) {
+      throw new Error(`Failed to update table: ${msg}`);
+    }
+
+    return data?.name ? { name: data?.name } : {};
+  }
+
+  async listFields(table_id: string): Promise<Field[]> {
     const fields = [];
     for await (const item of await this.client.base.appTableField.listWithIterator({
       params: {
@@ -164,24 +195,107 @@ export class BaseService implements IBaseService {
     return fields;
   }
 
-  async createRecord(tableId: string, fields: TCreateRecordArgs) {
-    const fieldList = await this.listFields(tableId);
-    const fieldMap: FieldSet = {};
-    Object.entries(fields).forEach(([name, value]) => {
-      const fieldMeta = fieldList.find((item) => item.field_name === name);
-      if (fieldMeta) {
-        fieldMap[name] = value;
-      }
-    });
-
-    const { data } = await this.client.base.appTableRecord.create({
+  async createField(tableId: string, field: Field): Promise<Field> {
+    const { data, code, msg } = await this.client.base.appTableField.create({
       data: {
-        fields: fieldMap,
+        field_name: field.field_name,
+        type: field.type,
+        property: field.property,
+        description: typeof field.description === 'string' 
+          ? { text: field.description }
+          : undefined,
+        ui_type: field.ui_type
       },
       path: {
         table_id: tableId,
       },
     });
+
+    if (code != 0) {
+      throw new Error(`Failed to create field: ${msg}`);
+    }
+
+    return {
+      field_name: data?.field?.field_name || '',
+      type: data?.field?.type || 0,
+      property: data?.field?.property,
+      description: data?.field?.description?.text || '',
+      ui_type: data?.field?.ui_type,
+      is_primary: data?.field?.is_primary,
+      field_id: data?.field?.field_id
+    };
+  }
+
+  async deleteField(tableId: string, fieldId: string) {
+    const { data, code, msg } = await this.client.base.appTableField.delete({
+      path: {
+        table_id: tableId,
+        field_id: fieldId,
+      },
+    });
+
+    if (code != 0) {
+      throw new Error(`Failed to delete field: ${msg}`);
+    }
+
+    return { success: true };
+  }
+
+  async updateField(tableId: string, fieldId: string, field: Field) {
+    const { data, code, msg } = await this.client.base.appTableField.update({
+      data: {
+        field_name: field.field_name,
+        type: field.type,
+        property: field.property,
+        description: field.description ? { text: field.description } : undefined,
+        ui_type: field.ui_type
+      },
+      path: {
+        table_id: tableId,
+        field_id: fieldId,  
+      },
+    });
+
+    if (code != 0) {
+      throw new Error(`Failed to update field: ${msg}`);
+    }
+
+    return {
+      field_name: data?.field?.field_name || '',
+      type: data?.field?.type || 0,
+      property: data?.field?.property,
+      description: data?.field?.description?.text || '',
+      ui_type: data?.field?.ui_type,
+      is_primary: data?.field?.is_primary,
+      field_id: data?.field?.field_id
+    };
+  }  
+
+  async createRecord(tableId: string, fields: TCreateRecordArgs) {
+    // const fieldList = await this.listFields(tableId);
+    // const fieldMap: FieldSet = {};
+    // Object.entries(fields).forEach(([name, value]) => {
+    //   const fieldMeta = fieldList.find((item) => item.field_name === name);
+    //   if (fieldMeta) {
+    //     fieldMap[name] = value;
+    //   }
+    // });
+
+    const { data, code, msg } = await this.client.base.appTableRecord.create({
+      data: {
+        fields,
+        // fields: fieldMap,
+      },
+      path: {
+        table_id: tableId,
+      },
+    });
+
+    if (code != 0) {
+      throw new Error(`Failed to create record: ${msg}`);
+    }
+
+    console.log('>>>createRecord', code, msg); 
 
     return data?.record || { fields: {} };
   }
@@ -192,6 +306,82 @@ export class BaseService implements IBaseService {
     //     wiki_token: wikiToken,
     //   },
     // });
+  }
+
+  async updateRecord(tableId: string, recordId: string, fields: TCreateRecordArgs) {
+    const { data, code, msg } = await this.client.base.appTableRecord.update({
+      data: {
+        fields,
+      },
+      path: {
+        table_id: tableId,
+        record_id: recordId,
+      },
+    });
+
+    if (code != 0) {
+      throw new Error(`Failed to update record: ${msg}`);
+    }
+
+    console.log('>>>updateRecord', code, msg);
+    return data?.record || { fields: {} };
+  }
+
+  async deleteRecord(tableId: string, recordId: string) {
+    const { code, msg, data } = await this.client.base.appTableRecord.delete({
+      path: {
+        table_id: tableId,
+        record_id: recordId,
+      },
+    });
+
+    if (code != 0) {
+      throw new Error(`Failed to delete record: ${msg}`);
+    }
+
+    return { success: true };
+  }
+
+  async getRecord(tableId: string, recordId: string): Promise<AirtableRecord | null> {
+    const { data, code, msg } = await this.client.base.appTableRecord.get({
+      path: {
+        table_id: tableId,
+        record_id: recordId,
+      },
+    });
+
+    if (code != 0) {
+      throw new Error(`Failed to get record: ${msg}`);
+    }
+
+    return data?.record || null;      
+  }
+
+  async createTable(request: CreateTable): Promise<CreateTableResponse> {
+    const { data, code, msg } = await this.client.base.appTable.create({
+      data: {
+        table: {
+          name: request.name,
+          default_view_name: request.default_view_name,
+          fields: request.fields?.map(field => ({
+            field_name: field.field_name,
+            type: field.type,
+            ui_type: field.ui_type,
+            property: field.property,
+            description: typeof field.description === 'string' 
+              ? { text: field.description }
+              : field.description
+          }))
+        }
+      },
+    });
+
+    console.log('>>>createTable response', code, msg);
+
+    if (code!= 0 || !data?.table_id || !data.field_id_list?.length) {
+      throw new Error(`Failed to create table: ${msg}`);
+    }
+    return data;
   }
 
   // private async validateAndGetSearchFields(

@@ -13,6 +13,7 @@ export const BaseSchema = z.object({
   permissionLevel: z.string(),
 });
 
+
 export const ListTablesResponseSchema = z.array(z.object({
   name: z.string().optional(),
   revision: z.number().optional(),
@@ -99,6 +100,16 @@ export const TableSchema = z.object({
   views: z.array(ViewSchema),
 });
 
+// 表格Schema
+export const CreateTableSchema = z.object({
+  name: z.string().optional(),
+  default_view_name: z.string().optional(),
+  fields: z.array(FieldSchema).optional(),
+});
+
+// 类型导出
+export type CreateTable = z.infer<typeof CreateTableSchema>;
+
 export const BaseSchemaResponseSchema = z.object({
   tables: z.array(TableSchema),
 });
@@ -110,6 +121,10 @@ export const ListRecordsArgsSchema = z.object({
 
 export const GetAppTokenArgsSchema = z.object({
   wikiToken: z.string(),
+});
+
+export const GetTableSchemaArgsSchema = z.object({
+  tableId: z.string(),
 });
 
 export const SearchRecordsArgsSchema = z.object({
@@ -176,19 +191,19 @@ export const DeleteRecordsArgsSchema = z.object({
 });
 
 export const CreateTableArgsSchema = z.object({
-  baseId: z.string(),
+  // baseId: z.string(),
   name: z.string().describe('Name for the new table. Must be unique in the base.'),
-  description: z.string().optional(),
+  // description: z.string().optional(),
   fields: z.array(FieldSchema).describe(`Table fields. Rules:
 - At least one field must be specified.
 - The primary (first) field must be one of: single line text, long text, date, phone number, email, URL, number, currency, percent, duration, formula, autonumber, barcode.`),
 });
 
 export const UpdateTableArgsSchema = z.object({
-  baseId: z.string(),
+  // baseId: z.string(),
   tableId: z.string(),
-  name: z.string().optional(),
-  description: z.string().optional(),
+  name: z.string(),
+  // description: z.string().optional(),
 });
 
 export const CreateFieldArgsSchema = z.object({
@@ -201,9 +216,12 @@ export const CreateFieldArgsSchema = z.object({
 });
 
 export const UpdateFieldArgsSchema = z.object({
-  baseId: z.string(),
+  // baseId: z.string(),
   tableId: z.string(),
   fieldId: z.string(),
+  nested: z.object({
+    field: FieldSchema,
+  }),
   name: z.string().optional(),
   description: z.string().optional(),
 });
@@ -271,14 +289,27 @@ export interface ListRecordsOptions {
   filterByFormula?: string | undefined;
 }
 
+export interface BaseServiceResponse {
+  success: boolean;
+}
+
 export interface IBaseService {
   listRecords(tableId: string, options?: ListRecordsOptions): Promise<AirtableRecord[]>;
   listTables(): Promise<{
     tables: ListTablesResponse,
     baseToken: string,
   }>;
+  createTable(data: CreateTable): Promise<CreateTableResponse>;
+  updateTable(tableId: string, name: string): Promise<{ name?: string }>; 
+  deleteTable(tableId: string): Promise<BaseServiceResponse>;
   listFields(tableId: string): Promise<Field[]>;
+  createField(tableId: string, field: Field): Promise<Field>;
+  updateField(tableId: string, fieldId: string, field: Field): Promise<Field>;
+  deleteField(tableId: string, fieldId: string): Promise<BaseServiceResponse>;
   createRecord(tableId: string, fields: TCreateRecordArgs): Promise<AirtableRecord>;
+  updateRecord(tableId: string, recordId: string, fields: TCreateRecordArgs): Promise<AirtableRecord>;
+  deleteRecord(tableId: string, recordId: string): Promise<BaseServiceResponse>;
+  getRecord(tableId: string, recordId: string): Promise<AirtableRecord | null>;
 }
 
 export interface IAirtableMCPServer {
@@ -333,3 +364,79 @@ export enum FieldType {
   // 按钮字段
   VirtualTrigger = 3001, // 仅含 meta，不含 cellValue 的字段
 }
+
+export interface Prompt {
+  id: string;
+  name: string;
+  content: string;
+  description: string | undefined;
+  tags: string[] | undefined;
+  createdAt: number;
+  updatedAt: number;
+  version: number | undefined;
+  isEnabled: boolean | undefined;
+  category: string | undefined;
+  parameters: PromptParameter[] | undefined;
+}
+
+export interface PromptParameter {
+  name: string;
+  type: 'string' | 'number' | 'boolean' | 'array' | 'object';
+  description: string | undefined;
+  required: boolean | undefined;
+  defaultValue: any | undefined;
+}
+
+export interface CreatePromptRequest {
+  name: string;
+  content: string;
+  description?: string;
+  tags?: string[];
+  category?: string;
+  parameters?: PromptParameter[];
+}
+
+export interface UpdatePromptRequest {
+  name?: string;
+  content?: string;
+  description?: string;
+  tags?: string[];
+  isEnabled?: boolean;
+  category?: string;
+  parameters?: PromptParameter[];
+}
+
+export interface TextResourceArgument {
+  name: string;
+  description: string | undefined;
+  required: boolean | undefined;
+}
+
+export interface TextResource {
+  id: string;
+  name: string;
+  description: string | undefined;
+  arguments: TextResourceArgument[] | undefined;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface CreateTextResourceRequest {
+  name: string;
+  description?: string;
+  arguments?: TextResourceArgument[];
+}
+
+export interface UpdateTextResourceRequest {
+  name?: string;
+  description?: string;
+  arguments?: TextResourceArgument[];
+}
+
+export const CreateTableResponseSchema = z.object({
+  table_id: z.string().optional(),
+  default_view_id: z.string().optional(),
+  field_id_list: z.array(z.string()).optional(),
+});
+
+export type CreateTableResponse = z.infer<typeof CreateTableResponseSchema>;
