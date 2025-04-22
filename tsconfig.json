@@ -1,6 +1,7 @@
 {
   "extends": ["@tsconfig/node-lts/tsconfig.json", "tsconfig-domdomegg/tsconfig.json"],
-  "include": [
-    "src/**/*"
-  ],
+  "include": ["src/**/*"],
+  "compilerOptions": {
+    "exactOptionalPropertyTypes": false
+  }
 }

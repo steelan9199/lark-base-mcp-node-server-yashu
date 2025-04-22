@@ -30,15 +30,13 @@ import {
   // IAirtableService,
   IBaseService,
   IAirtableMCPServer,
-} from './types.js';
+} from './types/types.js';
 
 const getInputSchema = (schema: z.ZodType<object>): ListToolsResult['tools'][0]['inputSchema'] => {
   const jsonSchema = zodToJsonSchema(schema);
   if (!('type' in jsonSchema) || jsonSchema.type !== 'object') {
     throw new Error(
-      `Invalid input schema to convert in airtable-mcp-server: expected an object but got ${
-        'type' in jsonSchema ? jsonSchema.type : 'no type'
-      }`,
+      `Invalid input schema to convert in airtable-mcp-server: expected an object but got ${'type' in jsonSchema ? jsonSchema.type : 'no type'}`,
     );
   }
   return { ...jsonSchema, type: 'object' };
@@ -101,16 +99,16 @@ export class AirtableMCPServer implements IAirtableMCPServer {
         {
           uri: 'text://field-info-prompt',
           name: 'field-info-prompt',
-        }
+        },
       ],
     };
   }
 
   private async handleReadResource(request: z.infer<typeof ReadResourceRequestSchema>): Promise<ReadResourceResult> {
     const { uri, sessionId } = request.params;
-    
+
     // Handle text resource
-    if (uri === "text://field-info-prompt") {
+    if (uri === 'text://field-info-prompt') {
       return {
         contents: [
           {
@@ -128,8 +126,8 @@ export class AirtableMCPServer implements IAirtableMCPServer {
 -复选框：填写 true 或 false
 -条码：
 -人员：填写用户的open_id、union_id 或 user_id，类型需要与 user_id_type 指定的类型一致
--电话号码：填写文本内容
--超链接：参考以下示例，text 为文本值，link 为 URL 链接
+-电话号码：纯数字
+-超链接：对象，text 为文本值，link 为 URL 链接
 -附件：填写附件 token，需要先调用上传素材或分片上传素材接口将附件上传至该多维表格中
 -单向关联：填写被关联表的记录 ID
 -双向关联：填写被关联表的记录 ID
@@ -187,16 +185,20 @@ export class AirtableMCPServer implements IAirtableMCPServer {
         {
           name: 'delete_table',
           description: 'Delete a table in a app',
-          inputSchema: getInputSchema(z.object({
-            tableId: z.string(),
-          })),
+          inputSchema: getInputSchema(
+            z.object({
+              tableId: z.string(),
+            }),
+          ),
         },
         {
           name: 'list_fields',
           description: 'List all fields in a table',
-          inputSchema: getInputSchema(z.object({
-            tableId: z.string(),
-          })),
+          inputSchema: getInputSchema(
+            z.object({
+              tableId: z.string(),
+            }),
+          ),
         },
         {
           name: 'create_field',
@@ -211,10 +213,12 @@ export class AirtableMCPServer implements IAirtableMCPServer {
         {
           name: 'delete_field',
           description: 'Delete a field in a table',
-          inputSchema: getInputSchema(z.object({
-            tableId: z.string(),
-            fieldId: z.string(),
-          })),
+          inputSchema: getInputSchema(
+            z.object({
+              tableId: z.string(),
+              fieldId: z.string(),
+            }),
+          ),
         },
         {
           name: 'create_record',
@@ -224,27 +228,33 @@ export class AirtableMCPServer implements IAirtableMCPServer {
         {
           name: 'delete_record',
           description: 'Delete a record from a table',
-          inputSchema: getInputSchema(z.object({
-            tableId: z.string(),
-            recordId: z.string(),
-          })),
+          inputSchema: getInputSchema(
+            z.object({
+              tableId: z.string(),
+              recordId: z.string(),
+            }),
+          ),
         },
         {
           name: 'update_record',
           description: 'Update an existing record in a table',
-          inputSchema: getInputSchema(z.object({
-            tableId: z.string(),
-            recordId: z.string(),
-            fields: z.record(z.any()),
-          })),
+          inputSchema: getInputSchema(
+            z.object({
+              tableId: z.string(),
+              recordId: z.string(),
+              fields: z.record(z.any()),
+            }),
+          ),
         },
         {
           name: 'get_record',
           description: 'Get a single record by ID',
-          inputSchema: getInputSchema(z.object({
-            tableId: z.string(),
-            recordId: z.string(),
-          })),
+          inputSchema: getInputSchema(
+            z.object({
+              tableId: z.string(),
+              recordId: z.string(),
+            }),
+          ),
         },
       ],
     };
@@ -256,7 +266,7 @@ export class AirtableMCPServer implements IAirtableMCPServer {
       if (!sessionId) {
         throw new Error('Session ID is required');
       }
-      
+
       switch (request.params.name) {
         case 'list_tables': {
           const records = await this.airtableService.listTables(sessionId as string);
@@ -273,9 +283,11 @@ export class AirtableMCPServer implements IAirtableMCPServer {
           return formatToolResponse(table);
         }
         case 'delete_table': {
-          const args = z.object({
-            tableId: z.string(),
-          }).parse(request.params.arguments);
+          const args = z
+            .object({
+              tableId: z.string(),
+            })
+            .parse(request.params.arguments);
           const table = await this.airtableService.deleteTable(sessionId as string, args.tableId);
           return formatToolResponse(table);
         }
@@ -285,9 +297,11 @@ export class AirtableMCPServer implements IAirtableMCPServer {
           return formatToolResponse(records);
         }
         case 'list_fields': {
-          const args = z.object({
-            tableId: z.string(),
-          }).parse(request.params.arguments);
+          const args = z
+            .object({
+              tableId: z.string(),
+            })
+            .parse(request.params.arguments);
           const fields = await this.airtableService.listFields(sessionId as string, args.tableId);
           return formatToolResponse(fields);
         }
@@ -302,10 +316,12 @@ export class AirtableMCPServer implements IAirtableMCPServer {
           return formatToolResponse(field);
         }
         case 'delete_field': {
-          const args = z.object({
-            tableId: z.string(),
-            fieldId: z.string(),
-          }).parse(request.params.arguments);
+          const args = z
+            .object({
+              tableId: z.string(),
+              fieldId: z.string(),
+            })
+            .parse(request.params.arguments);
           const { success } = await this.airtableService.deleteField(sessionId as string, args.tableId, args.fieldId);
           return formatToolResponse({ success });
         }
@@ -315,19 +331,23 @@ export class AirtableMCPServer implements IAirtableMCPServer {
           return formatToolResponse(record);
         }
         case 'delete_record': {
-          const args = z.object({
-            tableId: z.string(),
-            recordId: z.string(),
-          }).parse(request.params.arguments);
+          const args = z
+            .object({
+              tableId: z.string(),
+              recordId: z.string(),
+            })
+            .parse(request.params.arguments);
           const { success } = await this.airtableService.deleteRecord(sessionId as string, args.tableId, args.recordId);
           return formatToolResponse({ success });
         }
         case 'update_record': {
-          const args = z.object({
-            tableId: z.string(),
-            recordId: z.string(),
-            fields: z.record(z.any()),
-          }).parse(request.params.arguments);
+          const args = z
+            .object({
+              tableId: z.string(),
+              recordId: z.string(),
+              fields: z.record(z.any()),
+            })
+            .parse(request.params.arguments);
           const record = await this.airtableService.updateRecord(sessionId as string, args.tableId, args.recordId, args.fields);
           return formatToolResponse({
             id: record.record_id,
@@ -337,22 +357,21 @@ export class AirtableMCPServer implements IAirtableMCPServer {
           });
         }
         case 'get_record': {
-          const args = z.object({
-            tableId: z.string(),
-            recordId: z.string(),
-          }).parse(request.params.arguments);
+          const args = z
+            .object({
+              tableId: z.string(),
+              recordId: z.string(),
+            })
+            .parse(request.params.arguments);
           const record = await this.airtableService.getRecord(sessionId as string, args.tableId, args.recordId);
           return formatToolResponse(record);
         }
-        default: {  
+        default: {
           throw new Error(`Unknown tool: ${request.params.name}`);
         }
       }
     } catch (error) {
-      return formatToolResponse(
-        `Error in tool ${request.params.name}: ${error instanceof Error ? error.message : String(error)}`,
-        true,
-      );
+      return formatToolResponse(`Error in tool ${request.params.name}: ${error instanceof Error ? error.message : String(error)}`, true);
     }
   }
 

@@ -1,7 +1,4 @@
-import {
-  describe, test, expect, vi, beforeEach, afterEach,
-  Mock,
-} from 'vitest';
+import { describe, test, expect, vi, beforeEach, afterEach, Mock } from 'vitest';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { AirtableMCPServer } from './mcpServer.js';
 

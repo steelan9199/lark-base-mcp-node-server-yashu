@@ -1,6 +1,4 @@
-import {
-  describe, test, expect, beforeEach, afterEach,
-} from 'vitest';
+import { describe, test, expect, beforeEach, afterEach } from 'vitest';
 import type {
   CallToolResult,
   JSONRPCMessage,
@@ -12,7 +10,7 @@ import type {
 } from '@modelcontextprotocol/sdk/types.js';
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
 import { AirtableMCPServer } from './mcpServer.js';
-import { AirtableService } from './baseService.js';
+import { BaseService } from './baseService.js';
 
 // Run me with:
 // AIRTABLE_API_KEY=pat1234.abcd RUN_INTEGRATION=TRUE npm run test -- 'src/e2e.test.ts'
@@ -27,8 +25,8 @@ import { AirtableService } from './baseService.js';
       throw new Error('AIRTABLE_API_KEY environment variable is required for integration tests');
     }
 
-    const airtableService = new AirtableService(apiKey);
-    server = new AirtableMCPServer(airtableService);
+    const baseService = new BaseService();
+    server = new AirtableMCPServer(baseService);
     [serverTransport, clientTransport] = InMemoryTransport.createLinkedPair();
     await server.connect(serverTransport);
   });
@@ -79,11 +77,13 @@ import { AirtableService } from './baseService.js';
     });
 
     expect(result).toMatchObject({
-      content: [{
-        type: 'text',
-        mimeType: 'application/json',
-        text: expect.any(String),
-      }],
+      content: [
+        {
+          type: 'text',
+          mimeType: 'application/json',
+          text: expect.any(String),
+        },
+      ],
       isError: false,
     });
 
@@ -127,11 +127,13 @@ import { AirtableService } from './baseService.js';
     });
 
     expect(result).toMatchObject({
-      content: [{
-        type: 'text',
-        mimeType: 'application/json',
-        text: expect.any(String),
-      }],
+      content: [
+        {
+          type: 'text',
+          mimeType: 'application/json',
+          text: expect.any(String),
+        },
+      ],
       isError: false,
     });
 
@@ -199,11 +201,13 @@ import { AirtableService } from './baseService.js';
     });
 
     expect(result).toMatchObject({
-      content: [{
-        type: 'text',
-        mimeType: 'application/json',
-        text: expect.any(String),
-      }],
+      content: [
+        {
+          type: 'text',
+          mimeType: 'application/json',
+          text: expect.any(String),
+        },
+      ],
       isError: false,
     });
 
@@ -248,11 +252,13 @@ import { AirtableService } from './baseService.js';
     });
 
     expect(readResult).toMatchObject({
-      contents: [{
-        uri: resource.uri,
-        mimeType: 'application/json',
-        text: expect.any(String),
-      }],
+      contents: [
+        {
+          uri: resource.uri,
+          mimeType: 'application/json',
+          text: expect.any(String),
+        },
+      ],
     });
 
     const content = JSON.parse(readResult.contents[0]!.text as string);

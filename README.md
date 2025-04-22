@@ -15,10 +15,7 @@ To use this server with the Claude Desktop app, add the following configuration 
   "mcpServers": {
     "airtable": {
       "command": "npx",
-      "args": [
-        "-y",
-        "airtable-mcp-server"
-      ],
+      "args": ["-y", "airtable-mcp-server"],
       "env": {
         "AIRTABLE_API_KEY": "pat123.abc123"
       }
@@ -34,6 +31,7 @@ Replace `pat123.abc123` with your [Airtable personal access token](https://airta
 ### Tools
 
 - **list_records**
+
   - Lists records from a specified Airtable table
   - Input parameters:
     - `baseId` (string, required): The ID of the Airtable base
@@ -42,6 +40,7 @@ Replace `pat123.abc123` with your [Airtable personal access token](https://airta
     - `filterByFormula` (string, optional): Airtable formula to filter records
 
 - **search_records**
+
   - Search for records containing specific text
   - Input parameters:
     - `baseId` (string, required): The ID of the Airtable base
@@ -51,11 +50,13 @@ Replace `pat123.abc123` with your [Airtable personal access token](https://airta
     - `maxRecords` (number, optional): Maximum number of records to return. Defaults to 100.
 
 - **list_bases**
+
   - Lists all accessible Airtable bases
   - No input parameters required
   - Returns base ID, name, and permission level
 
 - **list_tables**
+
   - Lists all tables in a specific base
   - Input parameters:
     - `baseId` (string, required): The ID of the Airtable base
@@ -63,6 +64,7 @@ Replace `pat123.abc123` with your [Airtable personal access token](https://airta
   - Returns table ID, name, description, fields, and views (to the given `detailLevel`)
 
 - **describe_table**
+
   - Gets detailed information about a specific table
   - Input parameters:
     - `baseId` (string, required): The ID of the Airtable base
@@ -72,6 +74,7 @@ Replace `pat123.abc123` with your [Airtable personal access token](https://airta
   - Useful for getting details about a specific table without fetching information about all tables in the base
 
 - **get_record**
+
   - Gets a specific record by ID
   - Input parameters:
     - `baseId` (string, required): The ID of the Airtable base
@@ -79,6 +82,7 @@ Replace `pat123.abc123` with your [Airtable personal access token](https://airta
     - `recordId` (string, required): The ID of the record to retrieve
 
 - **create_record**
+
   - Creates a new record in a table
   - Input parameters:
     - `baseId` (string, required): The ID of the Airtable base
@@ -86,6 +90,7 @@ Replace `pat123.abc123` with your [Airtable personal access token](https://airta
     - `fields` (object, required): The fields and values for the new record
 
 - **update_records**
+
   - Updates one or more records in a table
   - Input parameters:
     - `baseId` (string, required): The ID of the Airtable base
@@ -93,6 +98,7 @@ Replace `pat123.abc123` with your [Airtable personal access token](https://airta
     - `records` (array, required): Array of objects containing record ID and fields to update
 
 - **delete_records**
+
   - Deletes one or more records from a table
   - Input parameters:
     - `baseId` (string, required): The ID of the Airtable base
@@ -100,6 +106,7 @@ Replace `pat123.abc123` with your [Airtable personal access token](https://airta
     - `recordIds` (array, required): Array of record IDs to delete
 
 - **create_table**
+
   - Creates a new table in a base
   - Input parameters:
     - `baseId` (string, required): The ID of the Airtable base
@@ -108,6 +115,7 @@ Replace `pat123.abc123` with your [Airtable personal access token](https://airta
     - `fields` (array, required): Array of field definitions (name, type, description, options)
 
 - **update_table**
+
   - Updates a table's name or description
   - Input parameters:
     - `baseId` (string, required): The ID of the Airtable base
@@ -116,6 +124,7 @@ Replace `pat123.abc123` with your [Airtable personal access token](https://airta
     - `description` (string, optional): New description for the table
 
 - **create_field**
+
   - Creates a new field in a table
   - Input parameters:
     - `baseId` (string, required): The ID of the Airtable base
@@ -157,7 +166,8 @@ Pull requests are welcomed on GitHub! To get started:
 3. Install dependencies with `npm install`
 4. Run `npm run test` to run tests
 5. Build with `npm run build`
-  - You can use `npm run build:watch` to automatically build after editing [`src/index.ts`](./src/index.ts). This means you can hit save, reload Claude Desktop (with Ctrl/Cmd+R), and the changes apply.
+
+- You can use `npm run build:watch` to automatically build after editing [`src/index.ts`](./src/index.ts). This means you can hit save, reload Claude Desktop (with Ctrl/Cmd+R), and the changes apply.
 
 ## Releases
 

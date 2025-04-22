@@ -2,12 +2,18 @@
 /* eslint-disable no-restricted-syntax */
 import { BaseClient } from '@lark-base-open/node-sdk';
 import {
-  IBaseService, AirtableRecord, TCreateRecordArgs, FieldSet, Field,
-  FieldType, ListTablesResponse, ListRecordsOptions,
+  IBaseService,
+  AirtableRecord,
+  TCreateRecordArgs,
+  FieldSet,
+  Field,
+  FieldType,
+  ListTablesResponse,
+  ListRecordsOptions,
   Table,
   CreateTable,
-  CreateTableResponse
-} from './types.js';
+  CreateTableResponse,
+} from './types/types.js';
 import { sessionManager } from './sessionManager.js';
 
 const maxDataNumber = 100;
@@ -30,9 +36,9 @@ const transformFieldValue = (value: any, fieldMeta: Field) => {
     case FieldType.Stage:
       // SingleLink 错误传值会报错，且目前传数组、文本、ID都未填充至表格
       // Stage传值未填充到表格中
-      
+
       return optionHandler(value, fieldMeta.property?.options || []);
-      case FieldType.SingleLink: 
+    case FieldType.SingleLink:
     case FieldType.DuplexLink:
       if (typeof value === 'string') {
         return [value];
@@ -80,7 +86,7 @@ export class BaseService implements IBaseService {
     const params: any = {
       page_size: options?.maxRecords || 10,
     };
-    
+
     if (options?.filterByFormula) {
       params.filter = options.filterByFormula;
     }
@@ -188,10 +194,10 @@ export class BaseService implements IBaseService {
         field_name: field.field_name,
         type: field.type,
         property: field.property,
-        description: typeof field.description === 'string' 
-          ? { text: field.description }
-          : undefined,
-        ui_type: field.ui_type
+        description: typeof field.description === 'string' ? { text: field.description } : undefined,
+        //@ts-expect-error
+        // sdk 目前枚举值类型没对齐开放平台，先忽略
+        ui_type: field.ui_type,
       },
       path: {
         table_id: tableId,
@@ -209,7 +215,7 @@ export class BaseService implements IBaseService {
       description: data?.field?.description?.text || '',
       ui_type: data?.field?.ui_type,
       is_primary: data?.field?.is_primary,
-      field_id: data?.field?.field_id
+      field_id: data?.field?.field_id,
     };
   }
 
@@ -237,11 +243,13 @@ export class BaseService implements IBaseService {
         type: field.type,
         property: field.property,
         description: field.description ? { text: field.description } : undefined,
-        ui_type: field.ui_type
+        //@ts-expect-error
+        // sdk 目前枚举值类型没对齐开放平台，先忽略
+        ui_type: field.ui_type,
       },
       path: {
         table_id: tableId,
-        field_id: fieldId,  
+        field_id: fieldId,
       },
     });
 
@@ -256,7 +264,7 @@ export class BaseService implements IBaseService {
       description: data?.field?.description?.text || '',
       ui_type: data?.field?.ui_type,
       is_primary: data?.field?.is_primary,
-      field_id: data?.field?.field_id
+      field_id: data?.field?.field_id,
     };
   }
 
@@ -274,7 +282,6 @@ export class BaseService implements IBaseService {
     if (code != 0) {
       throw new Error(`Failed to create record: ${msg}`);
     }
-
 
     return data?.record || { fields: {} };
   }
@@ -335,30 +342,34 @@ export class BaseService implements IBaseService {
       throw new Error(`Failed to get record: ${msg}`);
     }
 
-    return data?.record || null;      
+    return data?.record || null;
   }
 
   async createTable(sessionId: string, data: CreateTable): Promise<CreateTableResponse> {
     const client = this.createClient(sessionId);
-    const { data: response, code, msg } = await client.base.appTable.create({
+    const {
+      data: response,
+      code,
+      msg,
+    } = await client.base.appTable.create({
       data: {
         table: {
           name: data.name,
           default_view_name: data.default_view_name,
-          fields: data.fields?.map(field => ({
+          //@ts-expect-error
+          // sdk 目前枚举值类型没对齐开放平台，先忽略
+          fields: data.fields?.map((field) => ({
             field_name: field.field_name,
             type: field.type,
             ui_type: field.ui_type,
             property: field.property,
-            description: typeof field.description === 'string' 
-              ? { text: field.description }
-              : field.description
-          }))
-        }
+            description: typeof field.description === 'string' ? { text: field.description } : field.description,
+          })),
+        },
       },
     });
 
-    if (code!= 0 || !response?.table_id || !response.field_id_list?.length) {
+    if (code != 0 || !response?.table_id || !response.field_id_list?.length) {
       throw new Error(`Failed to create table: ${msg}`);
     }
     return response;

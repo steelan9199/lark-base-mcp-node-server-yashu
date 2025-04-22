@@ -1,16 +1,12 @@
-import {
-  describe, test, expect, vi, beforeEach, afterEach,
-} from 'vitest';
-import type {
-  JSONRPCMessage, JSONRPCRequest, JSONRPCResponse, Tool,
-} from '@modelcontextprotocol/sdk/types.js';
+import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest';
+import type { JSONRPCMessage, JSONRPCRequest, JSONRPCResponse, Tool } from '@modelcontextprotocol/sdk/types.js';
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
-import type { IAirtableService } from './types.js';
+import type { IBaseService } from './types/types.js';
 import { AirtableMCPServer } from './mcpServer.js';
 
 describe('AirtableMCPServer', () => {
   let server: AirtableMCPServer;
-  let mockAirtableService: IAirtableService;
+  let mockAirtableService: IBaseService;
   let serverTransport: InMemoryTransport;
   let clientTransport: InMemoryTransport;
 
@@ -19,12 +15,10 @@ describe('AirtableMCPServer', () => {
 
     // Create mock AirtableService
     mockAirtableService = {
-      listBases: vi.fn().mockResolvedValue({
-        bases: [
-          { id: 'base1', name: 'Test Base', permissionLevel: 'create' },
-        ],
+      listTables: vi.fn().mockResolvedValue({
+        bases: [{ id: 'base1', name: 'Test Base', permissionLevel: 'create' }],
       }),
-      getBaseSchema: vi.fn().mockResolvedValue({
+      listFields: vi.fn().mockResolvedValue({
         tables: [
           {
             id: 'tbl1',
@@ -36,9 +30,7 @@ describe('AirtableMCPServer', () => {
           },
         ],
       }),
-      listRecords: vi.fn().mockResolvedValue([
-        { id: 'rec1', fields: { name: 'Test Record' } },
-      ]),
+      listRecords: vi.fn().mockResolvedValue([{ id: 'rec1', fields: { name: 'Test Record' } }]),
       getRecord: vi.fn().mockResolvedValue({
         id: 'rec1',
         fields: { name: 'Test Record' },
@@ -47,12 +39,8 @@ describe('AirtableMCPServer', () => {
         id: 'rec1',
         fields: { name: 'New Record' },
       }),
-      updateRecords: vi.fn().mockResolvedValue([
-        { id: 'rec1', fields: { name: 'Updated Record' } },
-      ]),
-      deleteRecords: vi.fn().mockResolvedValue([
-        { id: 'rec1', deleted: true },
-      ]),
+      updateRecord: vi.fn().mockResolvedValue([{ id: 'rec1', fields: { name: 'Updated Record' } }]),
+      deleteRecord: vi.fn().mockResolvedValue([{ id: 'rec1', deleted: true }]),
       createTable: vi.fn().mockResolvedValue({
         id: 'tbl1',
         name: 'New Table',
@@ -102,11 +90,13 @@ describe('AirtableMCPServer', () => {
       });
 
       expect(response.result).toEqual({
-        resources: [{
-          uri: 'airtable://base1/tbl1/schema',
-          mimeType: 'application/json',
-          name: 'Test Base: Test Table schema',
-        }],
+        resources: [
+          {
+            uri: 'airtable://base1/tbl1/schema',
+            mimeType: 'application/json',
+            name: 'Test Base: Test Table schema',
+          },
+        ],
       });
     });
 
@@ -121,19 +111,21 @@ describe('AirtableMCPServer', () => {
       });
 
       expect(response.result).toEqual({
-        contents: [{
-          uri: 'airtable://base1/tbl1/schema',
-          mimeType: 'application/json',
-          text: JSON.stringify({
-            baseId: 'base1',
-            tableId: 'tbl1',
-            name: 'Test Table',
-            description: 'Test Description',
-            primaryFieldId: 'fld1',
-            fields: [],
-            views: [],
-          }),
-        }],
+        contents: [
+          {
+            uri: 'airtable://base1/tbl1/schema',
+            mimeType: 'application/json',
+            text: JSON.stringify({
+              baseId: 'base1',
+              tableId: 'tbl1',
+              name: 'Test Table',
+              description: 'Test Description',
+              primaryFieldId: 'fld1',
+              fields: [],
+              views: [],
+            }),
+          },
+        ],
       });
     });
 
@@ -171,13 +163,13 @@ describe('AirtableMCPServer', () => {
       });
 
       expect(response.result).toEqual({
-        content: [{
-          type: 'text',
-          mimeType: 'application/json',
-          text: JSON.stringify([
-            { id: 'rec1', fields: { name: 'Test Record' } },
-          ]),
-        }],
+        content: [
+          {
+            type: 'text',
+            mimeType: 'application/json',
+            text: JSON.stringify([{ id: 'rec1', fields: { name: 'Test Record' } }]),
+          },
+        ],
         isError: false,
       });
     });
