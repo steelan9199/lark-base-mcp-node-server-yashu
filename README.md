@@ -4,7 +4,24 @@ A Model Context Protocol server that provides read and write access to Feishu Ba
 
 ## Usage
 
-To use this server, you'll need to set up your environment with the appropriate credentials for accessing Feishu Base.
+To use this server with a mcp client.
+
+```json
+{
+  "mcpServers": {
+    "base-mcp-server": {
+      "command": "npx",
+      "args": [
+        "@bitable/base-mcp-server",
+        "-a",
+        "app token of base",
+        "-p"
+        "peronalBaseToken of base"
+      ]
+    }
+  }
+}
+```
 
 ## Components
 
