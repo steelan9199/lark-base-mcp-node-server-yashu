@@ -27,23 +27,24 @@ import {
   SearchRecordsArgsSchema,
   GetAppTokenArgsSchema,
   GetTableSchemaArgsSchema,
-  // IAirtableService,
   IBaseService,
-  IAirtableMCPServer,
-} from './types/types.js';
+  IBaseMCPServer,
+} from '../types/types.js';
+import { SSEServerTransport } from '@modelcontextprotocol/sdk/server/sse.js';
+import { currentVersion } from '../utils/version.js';
 
 const getInputSchema = (schema: z.ZodType<object>): ListToolsResult['tools'][0]['inputSchema'] => {
   const jsonSchema = zodToJsonSchema(schema);
   if (!('type' in jsonSchema) || jsonSchema.type !== 'object') {
     throw new Error(
-      `Invalid input schema to convert in airtable-mcp-server: expected an object but got ${'type' in jsonSchema ? jsonSchema.type : 'no type'}`,
+      `Invalid input schema to convert in base-mcp-server: expected an object but got ${'type' in jsonSchema ? jsonSchema.type : 'no type'}`,
     );
   }
   return { ...jsonSchema, type: 'object' };
 };
 
 const formatToolResponse = (data: unknown, isError = false): CallToolResult => {
-  console.log('>>>formatToolResponse', data, isError);
+  // console.log('>>>formatToolResponse', data, isError);
   return {
     content: [
       {
@@ -56,19 +57,19 @@ const formatToolResponse = (data: unknown, isError = false): CallToolResult => {
   };
 };
 
-export class AirtableMCPServer implements IAirtableMCPServer {
+export class BaseMCPServer implements IBaseMCPServer {
   private server: Server;
 
-  private airtableService: IBaseService;
+  private baseService: IBaseService;
 
   private readonly SCHEMA_PATH = 'schema';
 
-  constructor(airtableService: IBaseService) {
-    this.airtableService = airtableService;
+  constructor(baseService: IBaseService) {
+    this.baseService = baseService;
     this.server = new Server(
       {
-        name: 'airtable-mcp-server',
-        version: '0.1.0',
+        name: 'base-mcp-server',
+        version: currentVersion,
       },
       {
         capabilities: {
@@ -88,7 +89,7 @@ export class AirtableMCPServer implements IAirtableMCPServer {
   }
 
   private async handleListResources(): Promise<ListResourcesResult> {
-    const { tables, baseToken } = await this.airtableService.listTables();
+    const { tables, baseToken } = await this.baseService.listTables();
     return {
       resources: [
         ...tables.map((item) => ({
@@ -143,7 +144,7 @@ export class AirtableMCPServer implements IAirtableMCPServer {
       throw new Error('Invalid resource URI');
     }
     const [, baseId, tableId] = match;
-    const fields = await this.airtableService.listFields(sessionId as string, tableId);
+    const fields = await this.baseService.listFields(sessionId as string, tableId);
     return {
       contents: [
         {
@@ -262,24 +263,25 @@ export class AirtableMCPServer implements IAirtableMCPServer {
 
   private async handleCallTool(request: z.infer<typeof CallToolRequestSchema>): Promise<CallToolResult> {
     try {
-      const sessionId = this.server.transport?.sessionId;
-      if (!sessionId) {
+      const transport = this.server.transport;
+      const sessionId = transport?.sessionId;
+      if (transport instanceof SSEServerTransport && !sessionId) {
         throw new Error('Session ID is required');
       }
 
       switch (request.params.name) {
         case 'list_tables': {
-          const records = await this.airtableService.listTables(sessionId as string);
+          const records = await this.baseService.listTables(sessionId as string);
           return formatToolResponse(records);
         }
         case 'create_table': {
           const args = CreateTableArgsSchema.parse(request.params.arguments);
-          const table = await this.airtableService.createTable(sessionId as string, args);
+          const table = await this.baseService.createTable(sessionId as string, args);
           return formatToolResponse(table);
         }
         case 'update_table': {
           const args = UpdateTableArgsSchema.parse(request.params.arguments);
-          const table = await this.airtableService.updateTable(sessionId as string, args.tableId, args.name);
+          const table = await this.baseService.updateTable(sessionId as string, args.tableId, args.name);
           return formatToolResponse(table);
         }
         case 'delete_table': {
@@ -288,12 +290,12 @@ export class AirtableMCPServer implements IAirtableMCPServer {
               tableId: z.string(),
             })
             .parse(request.params.arguments);
-          const table = await this.airtableService.deleteTable(sessionId as string, args.tableId);
+          const table = await this.baseService.deleteTable(sessionId as string, args.tableId);
           return formatToolResponse(table);
         }
         case 'list_records': {
           const args = ListRecordsArgsSchema.parse(request.params.arguments);
-          const records = await this.airtableService.listRecords(sessionId as string, args.tableId, (args as any).options);
+          const records = await this.baseService.listRecords(sessionId as string, args.tableId, (args as any).options);
           return formatToolResponse(records);
         }
         case 'list_fields': {
@@ -302,17 +304,17 @@ export class AirtableMCPServer implements IAirtableMCPServer {
               tableId: z.string(),
             })
             .parse(request.params.arguments);
-          const fields = await this.airtableService.listFields(sessionId as string, args.tableId);
+          const fields = await this.baseService.listFields(sessionId as string, args.tableId);
           return formatToolResponse(fields);
         }
         case 'create_field': {
           const args = CreateFieldArgsSchema.parse(request.params.arguments);
-          const field = await this.airtableService.createField(sessionId as string, args.tableId, args.nested.field);
+          const field = await this.baseService.createField(sessionId as string, args.tableId, args.nested.field);
           return formatToolResponse(field);
         }
         case 'update_field': {
           const args = UpdateFieldArgsSchema.parse(request.params.arguments);
-          const field = await this.airtableService.updateField(sessionId as string, args.tableId, args.fieldId, args.nested.field);
+          const field = await this.baseService.updateField(sessionId as string, args.tableId, args.fieldId, args.nested.field);
           return formatToolResponse(field);
         }
         case 'delete_field': {
@@ -322,12 +324,12 @@ export class AirtableMCPServer implements IAirtableMCPServer {
               fieldId: z.string(),
             })
             .parse(request.params.arguments);
-          const { success } = await this.airtableService.deleteField(sessionId as string, args.tableId, args.fieldId);
+          const { success } = await this.baseService.deleteField(sessionId as string, args.tableId, args.fieldId);
           return formatToolResponse({ success });
         }
         case 'create_record': {
           const args = CreateRecordArgsSchema.parse(request.params.arguments);
-          const record = await this.airtableService.createRecord(sessionId as string, args.tableId, args.fields);
+          const record = await this.baseService.createRecord(sessionId as string, args.tableId, args.fields);
           return formatToolResponse(record);
         }
         case 'delete_record': {
@@ -337,7 +339,7 @@ export class AirtableMCPServer implements IAirtableMCPServer {
               recordId: z.string(),
             })
             .parse(request.params.arguments);
-          const { success } = await this.airtableService.deleteRecord(sessionId as string, args.tableId, args.recordId);
+          const { success } = await this.baseService.deleteRecord(sessionId as string, args.tableId, args.recordId);
           return formatToolResponse({ success });
         }
         case 'update_record': {
@@ -348,7 +350,7 @@ export class AirtableMCPServer implements IAirtableMCPServer {
               fields: z.record(z.any()),
             })
             .parse(request.params.arguments);
-          const record = await this.airtableService.updateRecord(sessionId as string, args.tableId, args.recordId, args.fields);
+          const record = await this.baseService.updateRecord(sessionId as string, args.tableId, args.recordId, args.fields);
           return formatToolResponse({
             id: record.record_id,
             modifiedBy: record.last_modified_by?.name,
@@ -363,7 +365,7 @@ export class AirtableMCPServer implements IAirtableMCPServer {
               recordId: z.string(),
             })
             .parse(request.params.arguments);
-          const record = await this.airtableService.getRecord(sessionId as string, args.tableId, args.recordId);
+          const record = await this.baseService.getRecord(sessionId as string, args.tableId, args.recordId);
           return formatToolResponse(record);
         }
         default: {

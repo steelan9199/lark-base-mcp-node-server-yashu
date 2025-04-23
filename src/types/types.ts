@@ -169,7 +169,7 @@ export const FieldSchema = z
       .optional(),
     is_hidden: z.boolean().optional(),
   })
-  .describe('The config of a field. NB: Formula fields cannot be created with this MCP due to a limitation in the Airtable API.');
+  .describe('The config of a field. NB: Formula fields cannot be created with this MCP due to a limitation in the base API.');
 
 export const ViewSchema = z.object({
   id: z.string(),
@@ -316,7 +316,7 @@ export type Table = z.infer<typeof TableSchema>;
 export type Field = z.infer<typeof FieldSchema>;
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type FieldSet = Record<string, any>;
-export type AirtableRecord = {
+export type BaseRecord = {
   fields: Record<
     string,
     | string
@@ -394,7 +394,7 @@ export interface BaseServiceResponse {
 }
 
 export interface IBaseService {
-  listRecords(sessionId: string, tableId: string, options?: ListRecordsOptions): Promise<AirtableRecord[]>;
+  listRecords(sessionId: string, tableId: string, options?: ListRecordsOptions): Promise<BaseRecord[]>;
   listTables(sessionId?: string): Promise<{
     tables: ListTablesResponse;
     baseToken: string;
@@ -406,13 +406,13 @@ export interface IBaseService {
   createField(sessionId: string, tableId: string, field: Field): Promise<Field>;
   updateField(sessionId: string, tableId: string, fieldId: string, field: Field): Promise<Field>;
   deleteField(sessionId: string, tableId: string, fieldId: string): Promise<BaseServiceResponse>;
-  createRecord(sessionId: string, tableId: string, fields: TCreateRecordArgs): Promise<AirtableRecord>;
-  updateRecord(sessionId: string, tableId: string, recordId: string, fields: TCreateRecordArgs): Promise<AirtableRecord>;
+  createRecord(sessionId: string, tableId: string, fields: TCreateRecordArgs): Promise<BaseRecord>;
+  updateRecord(sessionId: string, tableId: string, recordId: string, fields: TCreateRecordArgs): Promise<BaseRecord>;
   deleteRecord(sessionId: string, tableId: string, recordId: string): Promise<BaseServiceResponse>;
-  getRecord(sessionId: string, tableId: string, recordId: string): Promise<AirtableRecord | null>;
+  getRecord(sessionId: string, tableId: string, recordId: string): Promise<BaseRecord | null>;
 }
 
-export interface IAirtableMCPServer {
+export interface IBaseMCPServer {
   connect(transport: Transport): Promise<void>;
 }
 

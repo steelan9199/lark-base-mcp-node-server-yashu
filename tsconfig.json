@@ -1,5 +1,5 @@
 {
-  "extends": ["@tsconfig/node-lts/tsconfig.json", "tsconfig-domdomegg/tsconfig.json"],
+  "extends": ["@tsconfig/node-lts/tsconfig.json"],
   "include": ["src/**/*"],
   "compilerOptions": {
     "exactOptionalPropertyTypes": false

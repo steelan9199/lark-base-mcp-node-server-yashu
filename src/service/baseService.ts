@@ -3,7 +3,7 @@
 import { BaseClient } from '@lark-base-open/node-sdk';
 import {
   IBaseService,
-  AirtableRecord,
+  BaseRecord,
   TCreateRecordArgs,
   FieldSet,
   Field,
@@ -13,8 +13,11 @@ import {
   Table,
   CreateTable,
   CreateTableResponse,
-} from './types/types.js';
+} from '../types/types.js';
 import { sessionManager } from './sessionManager.js';
+import fs from 'fs';
+import path from 'path';
+import { format } from 'date-fns';
 
 const maxDataNumber = 100;
 
@@ -68,8 +71,49 @@ const transformFieldValue = (value: any, fieldMeta: Field) => {
   }
 };
 
+const logToFile = (...args: any[]) => {
+  const logDir = path.join(process.cwd(), 'logs');
+  if (!fs.existsSync(logDir)) {
+    fs.mkdirSync(logDir, { recursive: true });
+  }
+
+  const timestamp = format(new Date(), 'yyyy-MM-dd HH:mm:ss.SSS');
+  const logMessage = args.map((arg) => (typeof arg === 'object' ? JSON.stringify(arg, null, 2) : arg)).join(' ');
+
+  const logEntry = `[${timestamp}] ${logMessage}\n`;
+  const logFile = path.join(logDir, `base-service-${format(new Date(), 'yyyy-MM-dd')}.log`);
+
+  fs.appendFileSync(logFile, logEntry);
+  console.log(...args); // Also log to console for immediate feedback
+};
+
 export class BaseService implements IBaseService {
-  private createClient(sessionId?: string): BaseClient {
+  serviceType: 'sse' | 'stdio' = 'sse';
+  _personalBaseToken: string | undefined;
+  _appToken: string | undefined;
+  _client: BaseClient | undefined;
+  constructor(options?: { transport: 'sse' | 'stdio'; personalBaseToken: string; appToken: string }) {
+    this.serviceType = options?.transport || 'sse';
+    if (this.serviceType === 'stdio' && options) {
+      this._personalBaseToken = options.personalBaseToken || process.env.PERSONAL_BASE_TOKEN;
+      this._appToken = options.appToken || process.env.APP_TOKEN;
+      if (!this._personalBaseToken || !this._appToken) {
+        throw new Error('personalBaseToken and appToken must be set');
+      }
+      this._client = new BaseClient({
+        appToken: this._appToken,
+        personalBaseToken: this._personalBaseToken,
+      });
+    }
+  }
+
+  private getClient(sessionId?: string): BaseClient {
+    // logToFile('getClient', !!this._client, this.serviceType);
+    if (this._client) {
+      return this._client!;
+    }
+
+    // sse 模式下，每次调用tools都创建一个client
     const session = sessionManager.getSession(sessionId!);
     if (!session) {
       throw new Error('Session not found');
@@ -81,8 +125,8 @@ export class BaseService implements IBaseService {
     });
   }
 
-  async listRecords(sessionId: string, table_id: string, options?: ListRecordsOptions): Promise<AirtableRecord[]> {
-    const client = this.createClient(sessionId);
+  async listRecords(sessionId: string, table_id: string, options?: ListRecordsOptions): Promise<BaseRecord[]> {
+    const client = this.getClient(sessionId);
     const params: any = {
       page_size: options?.maxRecords || 10,
     };
@@ -106,7 +150,7 @@ export class BaseService implements IBaseService {
   }
 
   async listTables(sessionId?: string) {
-    const client = this.createClient(sessionId);
+    const client = this.getClient(sessionId);
     const tables = [];
 
     for await (const item of await client.base.appTable.listWithIterator({
@@ -123,18 +167,15 @@ export class BaseService implements IBaseService {
     }
 
     const session = sessionManager.getSession(sessionId!);
-    if (!session) {
-      throw new Error('Session not found');
-    }
 
     return {
       tables,
-      baseToken: session.appToken,
+      baseToken: this._appToken || session?.appToken || 'undefined',
     };
   }
 
   async deleteTable(sessionId: string, tableId: string) {
-    const client = this.createClient(sessionId);
+    const client = this.getClient(sessionId);
     const { data, code, msg } = await client.base.appTable.delete({
       path: {
         table_id: tableId,
@@ -149,7 +190,7 @@ export class BaseService implements IBaseService {
   }
 
   async updateTable(sessionId: string, tableId: string, name: string): Promise<{ name?: string }> {
-    const client = this.createClient(sessionId);
+    const client = this.getClient(sessionId);
     const { data, code, msg } = await client.base.appTable.patch({
       data: {
         name,
@@ -167,7 +208,7 @@ export class BaseService implements IBaseService {
   }
 
   async listFields(sessionId: string, table_id: string): Promise<Field[]> {
-    const client = this.createClient(sessionId);
+    const client = this.getClient(sessionId);
     const fields = [];
     for await (const item of await client.base.appTableField.listWithIterator({
       params: {
@@ -188,7 +229,7 @@ export class BaseService implements IBaseService {
   }
 
   async createField(sessionId: string, tableId: string, field: Field): Promise<Field> {
-    const client = this.createClient(sessionId);
+    const client = this.getClient(sessionId);
     const { data, code, msg } = await client.base.appTableField.create({
       data: {
         field_name: field.field_name,
@@ -220,7 +261,7 @@ export class BaseService implements IBaseService {
   }
 
   async deleteField(sessionId: string, tableId: string, fieldId: string) {
-    const client = this.createClient(sessionId);
+    const client = this.getClient(sessionId);
     const { data, code, msg } = await client.base.appTableField.delete({
       path: {
         table_id: tableId,
@@ -236,7 +277,7 @@ export class BaseService implements IBaseService {
   }
 
   async updateField(sessionId: string, tableId: string, fieldId: string, field: Field) {
-    const client = this.createClient(sessionId);
+    const client = this.getClient(sessionId);
     const { data, code, msg } = await client.base.appTableField.update({
       data: {
         field_name: field.field_name,
@@ -269,7 +310,7 @@ export class BaseService implements IBaseService {
   }
 
   async createRecord(sessionId: string, tableId: string, fields: TCreateRecordArgs) {
-    const client = this.createClient(sessionId);
+    const client = this.getClient(sessionId);
     const { data, code, msg } = await client.base.appTableRecord.create({
       data: {
         fields,
@@ -286,16 +327,8 @@ export class BaseService implements IBaseService {
     return data?.record || { fields: {} };
   }
 
-  async getAppToken(appToken: string, personalBaseToken: string, wikiToken: string) {
-    // const { data } = await this.client.base.app.get({
-    //   params: {
-    //     wiki_token: wikiToken,
-    //   },
-    // });
-  }
-
   async updateRecord(sessionId: string, tableId: string, recordId: string, fields: TCreateRecordArgs) {
-    const client = this.createClient(sessionId);
+    const client = this.getClient(sessionId);
     const { data, code, msg } = await client.base.appTableRecord.update({
       data: {
         fields,
@@ -314,7 +347,7 @@ export class BaseService implements IBaseService {
   }
 
   async deleteRecord(sessionId: string, tableId: string, recordId: string) {
-    const client = this.createClient(sessionId);
+    const client = this.getClient(sessionId);
     const { code, msg, data } = await client.base.appTableRecord.delete({
       path: {
         table_id: tableId,
@@ -329,8 +362,8 @@ export class BaseService implements IBaseService {
     return { success: true };
   }
 
-  async getRecord(sessionId: string, tableId: string, recordId: string): Promise<AirtableRecord | null> {
-    const client = this.createClient(sessionId);
+  async getRecord(sessionId: string, tableId: string, recordId: string): Promise<BaseRecord | null> {
+    const client = this.getClient(sessionId);
     const { data, code, msg } = await client.base.appTableRecord.get({
       path: {
         table_id: tableId,
@@ -346,7 +379,7 @@ export class BaseService implements IBaseService {
   }
 
   async createTable(sessionId: string, data: CreateTable): Promise<CreateTableResponse> {
-    const client = this.createClient(sessionId);
+    const client = this.getClient(sessionId);
     const {
       data: response,
       code,
@@ -423,7 +456,7 @@ export class BaseService implements IBaseService {
   //   searchTerm: string,
   //   fieldIds?: string[],
   //   maxRecords?: number,
-  // ): Promise<AirtableRecord[]> {
+  // ): Promise<BaseRecord[]> {
   //   // Validate and get search fields
   //   const searchFields = await this.validateAndGetSearchFields(baseId, tableId, fieldIds);
 
