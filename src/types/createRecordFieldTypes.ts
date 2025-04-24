@@ -1,3 +1,6 @@
+/**
+ * 创建记录tools时，fields的schema
+ */
 import { z } from "zod";
 
 // 基础类型

@@ -7,17 +7,18 @@ import {
   TCreateRecordArgs,
   FieldSet,
   Field,
-  FieldType,
   ListTablesResponse,
   ListRecordsOptions,
   Table,
   CreateTable,
   CreateTableResponse,
 } from '../types/types.js';
+import { FieldType } from '../types/enums.js';
 import { sessionManager } from './sessionManager.js';
 import fs from 'fs';
 import path from 'path';
 import { format } from 'date-fns';
+import { FieldSchema } from '../types/fieldSchemas.js';
 
 const maxDataNumber = 100;
 
@@ -225,21 +226,25 @@ export class BaseService implements IBaseService {
         break;
       }
     }
-    return fields;
+    return fields.map(field => ({
+      ...field,
+      description: typeof field.description === 'string' ? { text: field.description } : field.description
+    }));
   }
 
-  async createField(sessionId: string, tableId: string, field: Field): Promise<Field> {
+  async createField(sessionId: string, tableId: string, field: Field) {
     const client = this.getClient(sessionId);
     const { data, code, msg } = await client.base.appTableField.create({
-      data: {
-        field_name: field.field_name,
-        type: field.type,
-        property: field.property,
-        description: typeof field.description === 'string' ? { text: field.description } : undefined,
-        //@ts-expect-error
-        // sdk 目前枚举值类型没对齐开放平台，先忽略
-        ui_type: field.ui_type,
-      },
+      data: field,
+      // {
+      //   field_name: field.field_name,
+      //   type: field.type,
+      //   property: field.property,
+      //   description: typeof field.description === 'string' ? { text: field.description } : undefined,
+      //   //@ts-expect-error
+      //   // sdk 目前枚举值类型没对齐开放平台，先忽略
+      //   ui_type: field.ui_type,
+      // },
       path: {
         table_id: tableId,
       },
@@ -249,15 +254,17 @@ export class BaseService implements IBaseService {
       throw new Error(`Failed to create field: ${msg}`);
     }
 
-    return {
-      field_name: data?.field?.field_name || '',
-      type: data?.field?.type || 0,
-      property: data?.field?.property,
-      description: data?.field?.description?.text || '',
-      ui_type: data?.field?.ui_type,
-      is_primary: data?.field?.is_primary,
-      field_id: data?.field?.field_id,
-    };
+    return data?.field;
+
+    // return {
+    //   field_name: data?.field?.field_name || '',
+    //   type: data?.field?.type || 0,
+    //   property: data?.field?.property,
+    //   description: data?.field?.description?.text || '',
+    //   ui_type: data?.field?.ui_type,
+    //   is_primary: data?.field?.is_primary,
+    //   field_id: data?.field?.field_id,
+    // };
   }
 
   async deleteField(sessionId: string, tableId: string, fieldId: string) {
@@ -279,15 +286,16 @@ export class BaseService implements IBaseService {
   async updateField(sessionId: string, tableId: string, fieldId: string, field: Field) {
     const client = this.getClient(sessionId);
     const { data, code, msg } = await client.base.appTableField.update({
-      data: {
-        field_name: field.field_name,
-        type: field.type,
-        property: field.property,
-        description: field.description ? { text: field.description } : undefined,
-        //@ts-expect-error
-        // sdk 目前枚举值类型没对齐开放平台，先忽略
-        ui_type: field.ui_type,
-      },
+      data: field,
+      // data: {
+      //   field_name: field.field_name,
+      //   type: field.type,
+      //   property: field.property,
+      //   description: field.description ? { text: field.description } : undefined,
+      //   //@ts-expect-error
+      //   // sdk 目前枚举值类型没对齐开放平台，先忽略
+      //   ui_type: field.ui_type,
+      // },
       path: {
         table_id: tableId,
         field_id: fieldId,
@@ -298,15 +306,17 @@ export class BaseService implements IBaseService {
       throw new Error(`Failed to update field: ${msg}`);
     }
 
-    return {
-      field_name: data?.field?.field_name || '',
-      type: data?.field?.type || 0,
-      property: data?.field?.property,
-      description: data?.field?.description?.text || '',
-      ui_type: data?.field?.ui_type,
-      is_primary: data?.field?.is_primary,
-      field_id: data?.field?.field_id,
-    };
+    return data?.field;
+
+    // return {
+    //   field_name: data?.field?.field_name || '',
+    //   type: data?.field?.type || 0,
+    //   property: data?.field?.property,
+    //   description: data?.field?.description?.text || '',
+    //   ui_type: data?.field?.ui_type,
+    //   is_primary: data?.field?.is_primary,
+    //   field_id: data?.field?.field_id,
+    // };
   }
 
   async createRecord(sessionId: string, tableId: string, fields: TCreateRecordArgs) {
@@ -389,7 +399,6 @@ export class BaseService implements IBaseService {
         table: {
           name: data.name,
           default_view_name: data.default_view_name,
-          //@ts-expect-error
           // sdk 目前枚举值类型没对齐开放平台，先忽略
           fields: data.fields?.map((field) => ({
             field_name: field.field_name,
