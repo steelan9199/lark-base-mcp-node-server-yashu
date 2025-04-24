@@ -16,12 +16,18 @@ To use this server with a mcp client.
         "-a",
         "app token of base",
         "-p"
-        "peronalBaseToken of base"
+        "personalBaseToken of base"
       ]
     }
   }
 }
 ```
+
+## tokens
+You need get two tokens before using this mcp server.
+
+- personalBaseToken: find Base Plugin UI in your base, and access Custom Plugin->Get Authorization Code
+- appToken: You can find it in the base URL when it looks like https://xxx.feishu.cn/base/{app_token}, or you can query it using the wiki token through this API: [Get Node API](https://open.larkoffice.com/document/server-docs/docs/wiki-v2/space-node/get_node?appId=cli_a774ad630b26d00d)
 
 ## Components
 

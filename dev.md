@@ -4,7 +4,7 @@
 ## MCP inpsector
 ### stdio
 1. npx @modelcontextprotocol/inspector ./dist/index.js
-2. 使用stdio 方式
+2. 使用stdio 方式，传参 -p personalBaseToken -a appToken
 ### sse
 1. npm dev
 2. npx @modelcontextprotocol/inspector
