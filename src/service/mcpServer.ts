@@ -96,48 +96,13 @@ export class BaseMCPServer implements IBaseMCPServer {
           uri: `basetable://${baseToken}/${item.table_id}/${this.SCHEMA_PATH}`,
           name: item.name ?? '',
           tableName: item.name ?? '',
-        })),
-        {
-          uri: 'text://field-info-prompt',
-          name: 'field-info-prompt',
-        },
+        }))
       ],
     };
   }
 
   private async handleReadResource(request: z.infer<typeof ReadResourceRequestSchema>): Promise<ReadResourceResult> {
     const { uri, sessionId } = request.params;
-
-    // Handle text resource
-    if (uri === 'text://field-info-prompt') {
-      return {
-        contents: [
-          {
-            uri,
-            text: `Rules: 	
--要新增的记录的数据。你需先指定数据表中的字段（即指定列），再传入正确格式的数据作为一条记录。
--注意：
--记录字段类型及其描述如下所示：
-
--文本： 填写字符串格式的值
--数字：填写数字格式的值
--单选：填写选项值，对于新的选项值，将会创建一个新的选项
--多选：填写多个选项值，对于新的选项值，将会创建一个新的选项。如果填写多个相同的新选项值，将会创建多个相同的选项
--日期：填写毫秒级时间戳
--复选框：填写 true 或 false
--条码：
--人员：填写用户的open_id、union_id 或 user_id，类型需要与 user_id_type 指定的类型一致
--电话号码：纯数字
--超链接：对象，text 为文本值，link 为 URL 链接
--附件：填写附件 token，需要先调用上传素材或分片上传素材接口将附件上传至该多维表格中
--单向关联：填写被关联表的记录 ID
--双向关联：填写被关联表的记录 ID
--地理位置：填写经纬度坐标，字符串格式拼接经纬度，例如："114.31,30.57"`,
-          },
-        ],
-      };
-    }
-
     // Handle basetable resources
     const match = uri.match(/^basetable:\/\/([^/]+)\/([^/]+)\/schema$/);
     if (!match || !match[1] || !match[2]) {
@@ -343,13 +308,7 @@ export class BaseMCPServer implements IBaseMCPServer {
           return formatToolResponse({ success });
         }
         case 'update_record': {
-          const args = z
-            .object({
-              tableId: z.string(),
-              recordId: z.string(),
-              fields: z.record(z.any()),
-            })
-            .parse(request.params.arguments);
+          const args = UpdateRecordsArgsSchema.parse(request.params.arguments);
           const record = await this.baseService.updateRecord(sessionId as string, args.tableId, args.recordId, args.fields);
           return formatToolResponse({
             id: record.record_id,

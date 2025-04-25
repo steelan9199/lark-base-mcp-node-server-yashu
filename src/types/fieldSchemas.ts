@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { NumberFormatter, CurrencyCode, CurrencyPrecision, ProgressNumberFormatter, RatingSymbol, DateFormatter } from './enums.js';
 
 // Base field schema
-const baseFieldSchema = z.object({
+const BaseFieldSchema = z.object({
   field_name: z.string(),
   type: z.number(),
   ui_type: z.enum([
@@ -35,26 +35,26 @@ const baseFieldSchema = z.object({
     disable_sync: z.boolean().optional(),
     text: z.string().optional(),
   }).optional(),
-  is_primary: z.boolean().optional(),
+  is_primary: z.boolean().optional().describe('是否为数据表主键, 只有以下type的字段才能作为主键： 1-多行文本，2-数字，5-日期，13-电话号码，15-超链接，20-公式，22-地理位置'),
   is_hidden: z.boolean().optional(),
   field_id: z.string().optional(),
   property: z.any().optional(),
 }).describe('创建字段/表单时字段的schema');
 
 // Text Field
-export const textFieldSchema = baseFieldSchema.extend({
+export const TextFieldSchema = BaseFieldSchema.extend({
   type: z.literal(1),
   ui_type: z.enum(['Text']),
 });
 
 // Barcode Field
-export const barcodeFieldSchema = baseFieldSchema.extend({
+export const BarcodeFieldSchema = BaseFieldSchema.extend({
   type: z.literal(1),
   ui_type: z.literal('Barcode'),
 }).describe('条码（需声明 "ui_type": "Barcode"）');
 
 // Number Field
-export const numberFieldSchema = baseFieldSchema.extend({
+export const NumberFieldSchema = BaseFieldSchema.extend({
   type: z.literal(2),
   ui_type: z.literal('Number'),
   property: z.object({
@@ -63,7 +63,7 @@ export const numberFieldSchema = baseFieldSchema.extend({
 }).describe('数字（默认值）');
 
 // Currency Field
-export const currencyFieldSchema = baseFieldSchema.extend({
+export const CurrencyFieldSchema = BaseFieldSchema.extend({
   type: z.literal(2),
   ui_type: z.literal('Currency'),
   property: z.object({
@@ -73,7 +73,7 @@ export const currencyFieldSchema = baseFieldSchema.extend({
 }).describe('货币（需声明 "ui_type": "Currency"）');
 
 // Progress Field
-export const progressFieldSchema = baseFieldSchema.extend({
+export const ProgressFieldSchema = BaseFieldSchema.extend({
   type: z.literal(2),
   ui_type: z.literal('Progress'),
   property: z.object({
@@ -85,7 +85,7 @@ export const progressFieldSchema = baseFieldSchema.extend({
 }).describe('进度（需声明 "ui_type": "Progress"）');
 
 // Rating Field
-export const ratingFieldSchema = baseFieldSchema.extend({
+export const RatingFieldSchema = BaseFieldSchema.extend({
   type: z.literal(2),
   ui_type: z.literal('Rating'),
   property: z.object({
@@ -102,7 +102,7 @@ export const ratingFieldSchema = baseFieldSchema.extend({
 }).describe('评分（需声明 "ui_type": "Rating"）');
 
 // Single Select Field
-export const singleSelectFieldSchema = baseFieldSchema.extend({
+export const SingleSelectFieldSchema = BaseFieldSchema.extend({
   type: z.literal(3),
   ui_type: z.literal('SingleSelect'),
   property: z.object({
@@ -115,7 +115,7 @@ export const singleSelectFieldSchema = baseFieldSchema.extend({
 });
 
 // Multi Select Field
-export const multiSelectFieldSchema = baseFieldSchema.extend({
+export const MultiSelectFieldSchema = BaseFieldSchema.extend({
   type: z.literal(4),
   ui_type: z.literal('MultiSelect'),
   property: z.object({
@@ -128,7 +128,7 @@ export const multiSelectFieldSchema = baseFieldSchema.extend({
 });
 
 // DateTime Field
-export const dateTimeFieldSchema = baseFieldSchema.extend({
+export const DateTimeFieldSchema = BaseFieldSchema.extend({
   type: z.literal(5),
   ui_type: z.literal('DateTime'),
   property: z.object({
@@ -138,13 +138,13 @@ export const dateTimeFieldSchema = baseFieldSchema.extend({
 });
 
 // Checkbox Field
-export const checkboxFieldSchema = baseFieldSchema.extend({
+export const CheckboxFieldSchema = BaseFieldSchema.extend({
   type: z.literal(7),
   ui_type: z.literal('Checkbox'),
 });
 
 // User Field
-export const userFieldSchema = baseFieldSchema.extend({
+export const UserFieldSchema = BaseFieldSchema.extend({
   type: z.literal(11),
   ui_type: z.literal('User'),
   property: z.object({
@@ -153,24 +153,24 @@ export const userFieldSchema = baseFieldSchema.extend({
 });
 
 // Phone Field
-export const phoneFieldSchema = baseFieldSchema.extend({
+export const PhoneFieldSchema = BaseFieldSchema.extend({
   type: z.literal(13),
   ui_type: z.literal('Phone'),
 })
 // URL Field
-export const urlFieldSchema = baseFieldSchema.extend({
+export const UrlFieldSchema = BaseFieldSchema.extend({
   type: z.literal(15),
   ui_type: z.literal('Url'),
 });
 
 // Attachment Field
-export const attachmentFieldSchema = baseFieldSchema.extend({
+export const AttachmentFieldSchema = BaseFieldSchema.extend({
   type: z.literal(17),
   ui_type: z.literal('Attachment'),
 });
 
 // Single Link Field
-export const singleLinkFieldSchema = baseFieldSchema.extend({
+export const SingleLinkFieldSchema = BaseFieldSchema.extend({
   type: z.literal(18),
   ui_type: z.literal('SingleLink'),
   property: z.object({
@@ -180,13 +180,13 @@ export const singleLinkFieldSchema = baseFieldSchema.extend({
 });
 
 // Lookup Field
-export const lookupFieldSchema = baseFieldSchema.extend({
+export const LookupFieldSchema = BaseFieldSchema.extend({
   type: z.literal(19),
   // ui_type: z.literal('Lookup'), // 先不加上，sdk 的ui_type还没有这个枚举值
 });
 
 // Formula Field
-export const formulaFieldSchema = baseFieldSchema.extend({
+export const FormulaFieldSchema = BaseFieldSchema.extend({
   type: z.literal(20),
   ui_type: z.literal('Formula'),
   property: z.object({
@@ -196,7 +196,7 @@ export const formulaFieldSchema = baseFieldSchema.extend({
 });
 
 // Duplex Link Field
-export const duplexLinkFieldSchema = baseFieldSchema.extend({
+export const DuplexLinkFieldSchema = BaseFieldSchema.extend({
   type: z.literal(21),
   ui_type: z.literal('DuplexLink'),
   property: z.object({
@@ -207,7 +207,7 @@ export const duplexLinkFieldSchema = baseFieldSchema.extend({
 }).describe('双向关联');
 
 // Location Field
-export const locationFieldSchema = baseFieldSchema.extend({
+export const LocationFieldSchema = BaseFieldSchema.extend({
   type: z.literal(22),
   ui_type: z.literal('Location'),
   property: z.object({
@@ -218,7 +218,7 @@ export const locationFieldSchema = baseFieldSchema.extend({
 }).describe('地理位置');
 
 // Group Chat Field
-export const groupChatFieldSchema = baseFieldSchema.extend({
+export const GroupChatFieldSchema = BaseFieldSchema.extend({
   type: z.literal(23),
   ui_type: z.literal('GroupChat'),
   property: z.object({
@@ -227,7 +227,7 @@ export const groupChatFieldSchema = baseFieldSchema.extend({
 }).describe('群组');
 
 // Created Time Field
-export const createdTimeFieldSchema = baseFieldSchema.extend({
+export const CreatedTimeFieldSchema = BaseFieldSchema.extend({
   type: z.literal(1001),
   ui_type: z.literal('CreatedTime'),
   property: z.object({
@@ -236,25 +236,25 @@ export const createdTimeFieldSchema = baseFieldSchema.extend({
 });
 
 // Modified Time Field
-export const modifiedTimeFieldSchema = baseFieldSchema.extend({
+export const ModifiedTimeFieldSchema = BaseFieldSchema.extend({
   type: z.literal(1002),
   ui_type: z.literal('ModifiedTime'),
 });
 
 // Created User Field
-export const createdUserFieldSchema = baseFieldSchema.extend({
+export const CreatedUserFieldSchema = BaseFieldSchema.extend({
   type: z.literal(1003),
   ui_type: z.literal('CreatedUser'),
 });
 
 // Modified User Field
-export const modifiedUserFieldSchema = baseFieldSchema.extend({
+export const ModifiedUserFieldSchema = BaseFieldSchema.extend({
   type: z.literal(1004),
   ui_type: z.literal('ModifiedUser'),
 });
 
 // Auto Number Field
-export const autoNumberFieldSchema = baseFieldSchema.extend({
+export const AutoNumberFieldSchema = BaseFieldSchema.extend({
   type: z.literal(1005),
   ui_type: z.literal('AutoNumber'),
   property: z.object({
@@ -280,30 +280,30 @@ export const autoNumberFieldSchema = baseFieldSchema.extend({
 
 // Union type of all field schemas
 export const FieldSchema = z.union([
-  baseFieldSchema,
-  textFieldSchema,
-  barcodeFieldSchema,
-  numberFieldSchema,
-  currencyFieldSchema,
-  progressFieldSchema,
-  ratingFieldSchema,
-  singleSelectFieldSchema,
-  multiSelectFieldSchema,
-  dateTimeFieldSchema,
-  checkboxFieldSchema,
-  userFieldSchema,
-  phoneFieldSchema,
-  urlFieldSchema,
-  attachmentFieldSchema,
-  singleLinkFieldSchema,
-  lookupFieldSchema,
-  formulaFieldSchema,
-  duplexLinkFieldSchema,
-  locationFieldSchema,
-  groupChatFieldSchema,
-  createdTimeFieldSchema,
-  modifiedTimeFieldSchema,
-  createdUserFieldSchema,
-  modifiedUserFieldSchema,
-  autoNumberFieldSchema,
+  BaseFieldSchema,
+  TextFieldSchema,
+  BarcodeFieldSchema,
+  NumberFieldSchema,
+  CurrencyFieldSchema,
+  ProgressFieldSchema,
+  RatingFieldSchema,
+  SingleSelectFieldSchema,
+  MultiSelectFieldSchema,
+  DateTimeFieldSchema,
+  CheckboxFieldSchema,
+  UserFieldSchema,
+  PhoneFieldSchema,
+  UrlFieldSchema,
+  AttachmentFieldSchema,
+  SingleLinkFieldSchema,
+  LookupFieldSchema,
+  FormulaFieldSchema,
+  DuplexLinkFieldSchema,
+  LocationFieldSchema,
+  GroupChatFieldSchema,
+  CreatedTimeFieldSchema,
+  ModifiedTimeFieldSchema,
+  CreatedUserFieldSchema,
+  ModifiedUserFieldSchema,
+  AutoNumberFieldSchema,
 ]); 

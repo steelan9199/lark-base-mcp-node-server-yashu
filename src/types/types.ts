@@ -1,7 +1,9 @@
 import { Transport } from '@modelcontextprotocol/sdk/shared/transport.js';
 import { z } from 'zod';
-import { CreateRecordFieldsSchema } from './createRecordFieldTypes.js';
+import { RecordFieldsSchema } from './fieldValueSchemas.js';
 import { FieldSchema } from './fieldSchemas.js';
+
+
 export const ResponseSchema = (dataSchema: z.ZodType<object>) =>
   z.object({
     code: z.number(),
@@ -253,18 +255,13 @@ export const GetRecordArgsSchema = z.object({
 
 export const CreateRecordArgsSchema = z.object({
   tableId: z.string(),
-  fields: CreateRecordFieldsSchema,
+  fields: RecordFieldsSchema,
 });
 
 export const UpdateRecordsArgsSchema = z.object({
-  baseId: z.string(),
   tableId: z.string(),
-  records: z.array(
-    z.object({
-      id: z.string(),
-      fields: z.record(z.any()),
-    }),
-  ),
+  recordId: z.string(),
+  fields: RecordFieldsSchema,
 });
 
 export const DeleteRecordsArgsSchema = z.object({
@@ -383,7 +380,9 @@ export type BaseRecord = {
   last_modified_time?: number | undefined;
 };
 
-export type TCreateRecordArgs = z.infer<typeof CreateRecordArgsSchema>['fields'];
+// export type TCreateRecordArgs = z.infer<typeof RecordFieldsSchema>['fields'];
+
+export type TCreateRecordArgs = z.infer<typeof RecordFieldsSchema>;
 
 export interface ListRecordsOptions {
   maxRecords?: number | undefined;
