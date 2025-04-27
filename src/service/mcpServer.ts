@@ -260,7 +260,7 @@ export class BaseMCPServer implements IBaseMCPServer {
         }
         case 'list_records': {
           const args = ListRecordsArgsSchema.parse(request.params.arguments);
-          const records = await this.baseService.listRecords(sessionId as string, args.tableId, (args as any).options);
+          const records = await this.baseService.listRecords(sessionId as string, args.tableId, args.options);
           return formatToolResponse(records);
         }
         case 'list_fields': {

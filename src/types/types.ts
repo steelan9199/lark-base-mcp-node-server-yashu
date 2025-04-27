@@ -203,9 +203,20 @@ export const BaseSchemaResponseSchema = z.object({
   tables: z.array(TableSchema),
 });
 
+// Add Zod schema for ListRecordsOptions
+export const ListRecordsOptionsSchema = z.object({
+  fields: z.array(z.string()).optional(),
+  sort: z.array(z.string()).optional(),
+  filter: z.string().optional().describe('Filter records by a condition. Use the field name and operator to specify the condition. For example, AND(CurrentValue.[订单号].contains("004"),CurrentValue.[订单日期]= TODAY())'),
+  maxDataNumber: z.number().optional().default(20),
+});
+
+export type ListRecordsOptions = z.infer<typeof ListRecordsOptionsSchema>;
+
 // Zod schemas for tool arguments
 export const ListRecordsArgsSchema = z.object({
   tableId: z.string(),
+  options: ListRecordsOptionsSchema
 });
 
 export const GetAppTokenArgsSchema = z.object({
@@ -384,10 +395,7 @@ export type BaseRecord = {
 
 export type TCreateRecordArgs = z.infer<typeof RecordFieldsSchema>;
 
-export interface ListRecordsOptions {
-  maxRecords?: number | undefined;
-  filterByFormula?: string | undefined;
-}
+
 
 export interface BaseServiceResponse {
   success: boolean;
@@ -491,3 +499,4 @@ export const CreateTableResponseSchema = z.object({
 });
 
 export type CreateTableResponse = z.infer<typeof CreateTableResponseSchema>;
+

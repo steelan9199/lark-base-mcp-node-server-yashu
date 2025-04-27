@@ -43,8 +43,13 @@ const TextLinkFieldValueSchema = z.object({
   link: z.string().optional() 
 }).describe('超链接类型');
 
-// 地理位置类型, 25.4.25 验证在创建记录时location只能传字符串，传下面类型会报错‘the value of 'Location' must be a string like \"123.456,789.012\’
-const LocationFieldValueSchema = z.string().describe('地理位置类型, ui_type=Location, 填写经纬度坐标，用,拼接，例如"123.124,123.124"');
+// 地理位置类型, 25.4.25 验证在创建记录时location只能传字符串，传下面类型会报错'the value of 'Location' must be a string like \"123.456,789.012\'
+const LocationFieldValueSchema = z.string()
+  .regex(
+    /^-?([0-9]{1,3}(\.[0-9]{1,15})?),\s*-?([0-9]{1,3}(\.[0-9]{1,15})?)$/,
+    '地理位置必须是有效的经纬度坐标格式，例如"123.456,789.012"'
+  )
+  .describe('地理位置类型, ui_type=Location, 填写经纬度坐标，用,拼接，例如"123.124,123.124"');
 // const LocationSchema = z.object({
 //   location: z.string().optional(),
 //   pname: z.string().optional(),

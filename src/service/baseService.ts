@@ -129,44 +129,53 @@ export class BaseService implements IBaseService {
   async listRecords(sessionId: string, table_id: string, options?: ListRecordsOptions): Promise<BaseRecord[]> {
     const client = this.getClient(sessionId);
     const params: any = {
-      page_size: options?.maxRecords || 10,
+      page_size: 10,
+      ...options
     };
 
-    if (options?.filterByFormula) {
-      params.filter = options.filterByFormula;
+    const records = [];
+
+    try {
+      for await (const item of await client.base.appTableRecord.listWithIterator({
+        path: {
+          table_id,
+        },
+        params,
+      })) {
+        if (item?.items) {
+          records.push(...item.items);
+        }
+        if (options?.maxDataNumber && records.length >= options.maxDataNumber) {
+          break;
+        }
+      }
+    } catch (error) {
+      throw new Error(`Failed to list records: ${error}`);
     }
 
-    const data = await client.base.appTableRecord.list({
-      path: {
-        table_id,
-      },
-      params,
-    });
-
-    if (data.code != 0) {
-      throw new Error(`Failed to list records: ${data.msg}`);
-    }
-
-    return data.data?.items ?? [];
+    return records;
   }
 
   async listTables(sessionId?: string) {
     const client = this.getClient(sessionId);
     const tables = [];
 
-    for await (const item of await client.base.appTable.listWithIterator({
-      params: {
-        page_size: 20,
-      },
-    })) {
-      if (item?.items) {
-        tables.push(...item.items);
+    try {
+      for await (const item of await client.base.appTable.listWithIterator({
+        params: {
+          page_size: 20,
+        },
+      })) {
+        if (item?.items) {
+          tables.push(...item.items);
+        }
+        if (tables.length >= maxDataNumber) {
+          break;
+        }
       }
-      if (tables.length >= maxDataNumber) {
-        break;
-      }
+    } catch (error) {
+      throw new Error(`Failed to list tables: ${error}`);
     }
-
     const session = sessionManager.getSession(sessionId!);
 
     return {
@@ -307,16 +316,6 @@ export class BaseService implements IBaseService {
     }
 
     return data?.field;
-
-    // return {
-    //   field_name: data?.field?.field_name || '',
-    //   type: data?.field?.type || 0,
-    //   property: data?.field?.property,
-    //   description: data?.field?.description?.text || '',
-    //   ui_type: data?.field?.ui_type,
-    //   is_primary: data?.field?.is_primary,
-    //   field_id: data?.field?.field_id,
-    // };
   }
 
   async createRecord(sessionId: string, tableId: string, fields: TCreateRecordArgs) {
@@ -387,6 +386,27 @@ export class BaseService implements IBaseService {
 
     return data?.record || null;
   }
+
+  async createBatchRecord(sessionId: string, tableId: string, fields: TCreateRecordArgs[]) {
+    const client = this.getClient(sessionId);
+    const { data, code, msg } = await client.base.appTableRecord.batchCreate({
+      data: {
+        records: fields.map((field) => ({
+          fields: field,
+        })),
+      },
+      path: {
+        table_id: tableId,
+      },
+    }); 
+
+    if (code != 0) {
+      throw new Error(`Failed to create batch record: ${msg}`);
+    }
+
+    return data?.records || [];
+  }
+  
 
   async createTable(sessionId: string, data: CreateTable): Promise<CreateTableResponse> {
     const client = this.getClient(sessionId);
