@@ -92,6 +92,14 @@ export class BaseService implements IBaseService {
     return withUserAccessToken('u-jlJhgLaSp6XVQCZqflZatElhgj0M10ypjG20glmyw5V7');
   }
 
+  async getAuthorization() {
+    return await this._client2?.httpInstance.get('https://bytedance.feishu-boe.net/space/api/bitable/base_ai/v1/authorize/get_token?sessionId=233', {
+      headers: {
+        'x-tt-env': 'boe_ai_solo',
+      },
+    });
+  }
+
   async createBase(createBaseArgs: CreateBaseArgs, sessionId?: string) {
     const client = this.getClient(sessionId);
     const res = await this._client2?.bitable.v1.app.create(

@@ -318,6 +318,7 @@ export interface BaseServiceResponse {
 }
 
 export interface IBaseService {
+  getAuthorization(): Promise<any>;
   createBase(createBaseArgs: CreateBaseArgs, sessionId?: string): Promise<any>;
   updateBase(updateBaseArgs: UpdateBaseArgs, sessionId?: string): Promise<any>;
   copyBase(copyBaseArgs: CopyBaseArgs, sessionId?: string): Promise<any>;

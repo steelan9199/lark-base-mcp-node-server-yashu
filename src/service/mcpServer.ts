@@ -138,6 +138,11 @@ export class BaseMCPServer implements IBaseMCPServer {
     return {
       tools: [
         {
+          name: 'get_authorization',
+          description: 'Get authorization token',
+          inputSchema: getInputSchema(z.object({})),
+        },
+        {
           name: 'list_records',
           description: 'List records from a table',
           inputSchema: getInputSchema(ListRecordsArgsSchema),
@@ -241,6 +246,10 @@ export class BaseMCPServer implements IBaseMCPServer {
       }
 
       switch (request.params.name) {
+        case 'get_authorization': {
+          const base = await this.baseService.getAuthorization();
+          return formatToolResponse(base);
+        }
         case 'create_base': {
           const args = CreateBaseArgsSchema.parse(request.params.arguments);
           const base = await this.baseService.createBase(args, sessionId);
@@ -321,16 +330,16 @@ export class BaseMCPServer implements IBaseMCPServer {
           const record = await this.baseService.updateRecord(args, sessionId);
           return formatToolResponse(record);
         }
-        case 'get_record': {
-          const args = RecordArgsSchema.parse(request.params.arguments);
-          const record = await this.baseService.getRecord(args, sessionId);
-          return formatToolResponse(record);
-        }
-        case 'create_batch_record': {
-          const args = CreateBatchRecordArgsSchema.parse(request.params.arguments);
-          const records = await this.baseService.createBatchRecord(args, sessionId);
-          return formatToolResponse(records);
-        }
+        // case 'get_record': {
+        //   const args = RecordArgsSchema.parse(request.params.arguments);
+        //   const record = await this.baseService.getRecord(args, sessionId);
+        //   return formatToolResponse(record);
+        // }
+        // case 'create_batch_record': {
+        //   const args = CreateBatchRecordArgsSchema.parse(request.params.arguments);
+        //   const records = await this.baseService.createBatchRecord(args, sessionId);
+        //   return formatToolResponse(records);
+        // }
         default: {
           throw new Error(`Unknown tool: ${request.params.name}`);
         }
