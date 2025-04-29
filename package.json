@@ -27,6 +27,7 @@
   },
   "dependencies": {
     "@lark-base-open/node-sdk": "1.0.1",
+    "@larksuiteoapi/node-sdk": "^1.46.0",
     "@modelcontextprotocol/sdk": "^1.10.2",
     "commander": "^13.1.0",
     "date-fns": "^4.1.0",

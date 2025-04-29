@@ -9,6 +9,7 @@ const BaseFieldSchema = z.object({
     'Text',
     'Barcode',
     'Number',
+    'Email',
     'Progress',
     'Currency',
     'Rating',
@@ -45,6 +46,11 @@ const BaseFieldSchema = z.object({
 export const TextFieldSchema = BaseFieldSchema.extend({
   type: z.literal(1),
   ui_type: z.enum(['Text']),
+});
+
+export const EmailFieldSchema = BaseFieldSchema.extend({
+  type: z.literal(1),
+  ui_type: z.literal('Email'),
 });
 
 // Barcode Field
@@ -282,6 +288,7 @@ export const AutoNumberFieldSchema = BaseFieldSchema.extend({
 export const FieldSchema = z.union([
   BaseFieldSchema,
   TextFieldSchema,
+  EmailFieldSchema,
   BarcodeFieldSchema,
   NumberFieldSchema,
   CurrencyFieldSchema,

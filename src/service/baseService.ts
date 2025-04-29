@@ -1,26 +1,39 @@
 /* eslint-disable no-case-declarations */
 /* eslint-disable no-restricted-syntax */
-import { BaseClient } from '@lark-base-open/node-sdk';
+import { AppType, BaseClient } from '@lark-base-open/node-sdk';
 import {
   IBaseService,
   BaseRecord,
-  TCreateRecordArgs,
   FieldSet,
   Field,
   ListTablesResponse,
   ListRecordsOptions,
   Table,
-  CreateTable,
+  CreateTableArgs,
   CreateTableResponse,
+  CreateBaseArgs,
+  UpdateBaseArgs,
+  GetBaseArgs,
+  CopyBaseArgs,
+  ListRecordsArgs,
+  ListTablesArgs,
+  CommonTableArgsSchema,
+  CommonTableArgs,
+  ListFieldsArgs,
+  CreateFieldArgs,
+  UpdateTableArgs,
+  CommonFieldArgs,
+  UpdateFieldArgs,
+  CreateRecordArgs,
+  UpdateRecordArgs,
+  RecordArgs,
+  CreateBatchRecordArgs
 } from '../types/types.js';
 import { FieldType } from '../types/enums.js';
 import { sessionManager } from './sessionManager.js';
-import fs from 'fs';
-import path from 'path';
-import { format } from 'date-fns';
-import { FieldSchema } from '../types/fieldSchemas.js';
+import { Client, withUserAccessToken } from '@larksuiteoapi/node-sdk';
 
-const maxDataNumber = 100;
+const recordLength = 100;
 
 const optionHandler = (value: any, options: any[]) => {
   const optVal = value?.toString?.() ?? value ?? null;
@@ -28,124 +41,146 @@ const optionHandler = (value: any, options: any[]) => {
   return option ? option.name : optVal;
 };
 
-const transformFieldValue = (value: any, fieldMeta: Field) => {
-  switch (fieldMeta.type) {
-    case FieldType.Text:
-    case FieldType.Phone:
-      return value?.toString() ?? value ?? null;
-    case FieldType.Number:
-      const val = Number(value);
-      return Number.isNaN(val) ? null : val;
-    case FieldType.SingleSelect:
-    case FieldType.Stage:
-      // SingleLink 错误传值会报错，且目前传数组、文本、ID都未填充至表格
-      // Stage传值未填充到表格中
-
-      return optionHandler(value, fieldMeta.property?.options || []);
-    case FieldType.SingleLink:
-    case FieldType.DuplexLink:
-      if (typeof value === 'string') {
-        return [value];
-      }
-      if (Array.isArray(value)) {
-        return value.map((v) => v?.toString?.() ?? '');
-      }
-      return [value?.toString?.()];
-    case FieldType.MultiSelect:
-      if (Array.isArray(value)) {
-        return value.map((v) => optionHandler(v, fieldMeta.property?.options || []));
-      }
-      return optionHandler(value, fieldMeta.property?.options || []);
-    case FieldType.DateTime:
-      const dateVal = new Date(value).getTime();
-      return Number.isNaN(dateVal) || dateVal === 0 ? null : dateVal;
-    case FieldType.Checkbox:
-      return value?.toString() === 'true' || false;
-    case FieldType.Url:
-      const urlVal = value?.toString?.() ?? value ?? null;
-      return {
-        link: urlVal,
-        text: urlVal,
-      };
-    default:
-      return null;
-  }
-};
-
-const logToFile = (...args: any[]) => {
-  const logDir = path.join(process.cwd(), 'logs');
-  if (!fs.existsSync(logDir)) {
-    fs.mkdirSync(logDir, { recursive: true });
-  }
-
-  const timestamp = format(new Date(), 'yyyy-MM-dd HH:mm:ss.SSS');
-  const logMessage = args.map((arg) => (typeof arg === 'object' ? JSON.stringify(arg, null, 2) : arg)).join(' ');
-
-  const logEntry = `[${timestamp}] ${logMessage}\n`;
-  const logFile = path.join(logDir, `base-service-${format(new Date(), 'yyyy-MM-dd')}.log`);
-
-  fs.appendFileSync(logFile, logEntry);
-  console.log(...args); // Also log to console for immediate feedback
-};
-
 export class BaseService implements IBaseService {
   serviceType: 'sse' | 'stdio' = 'sse';
   _personalBaseToken: string | undefined;
   _appToken: string | undefined;
-  _client: BaseClient | undefined;
+  _client: Client | undefined;
+  _client2: Client | undefined;
   constructor(options?: { transport: 'sse' | 'stdio'; personalBaseToken: string; appToken: string }) {
     this.serviceType = options?.transport || 'sse';
+    this._client2 = new Client({
+      appId: '',
+      appSecret: '',
+      disableTokenCache: true,
+    });
+    this._client = this._client2;
+
     if (this.serviceType === 'stdio' && options) {
       this._personalBaseToken = options.personalBaseToken || process.env.PERSONAL_BASE_TOKEN;
       this._appToken = options.appToken || process.env.APP_TOKEN;
       if (!this._personalBaseToken || !this._appToken) {
         throw new Error('personalBaseToken and appToken must be set');
       }
-      this._client = new BaseClient({
-        appToken: this._appToken,
-        personalBaseToken: this._personalBaseToken,
-      });
+      // this._client = new BaseClient({
+      //   appToken: this._appToken,
+      //   personalBaseToken: this._personalBaseToken,
+      // });
     }
   }
 
-  private getClient(sessionId?: string): BaseClient {
+  private getClient(sessionId?: string): Client {
     // logToFile('getClient', !!this._client, this.serviceType);
+    return this._client!;
     if (this._client) {
       return this._client!;
     }
 
-    // sse 模式下，每次调用tools都创建一个client
-    const session = sessionManager.getSession(sessionId!);
-    if (!session) {
-      throw new Error('Session not found');
-    }
+    // // sse 模式下，每次调用tools都创建一个client
+    // const session = sessionManager.getSession(sessionId || '');
+    // if (!session) {
+    //   throw new Error('Session not found');
+    // }
 
-    return new BaseClient({
-      appToken: session.appToken,
-      personalBaseToken: session.personalBaseToken,
-    });
+    // return new BaseClient({
+    //   appToken: session.appToken,
+    //   personalBaseToken: session.personalBaseToken,
+    // });
   }
 
-  async listRecords(sessionId: string, table_id: string, options?: ListRecordsOptions): Promise<BaseRecord[]> {
+  private withUserAccessToken() {
+    return withUserAccessToken('u-jlJhgLaSp6XVQCZqflZatElhgj0M10ypjG20glmyw5V7');
+  }
+
+  async createBase(createBaseArgs: CreateBaseArgs, sessionId?: string) {
     const client = this.getClient(sessionId);
-    const params: any = {
+    const res = await this._client2?.bitable.v1.app.create(
+      {
+        data: {
+          name: createBaseArgs.name,
+          folder_token: createBaseArgs.folder_token,
+        },
+      },
+      this.withUserAccessToken(),
+    );
+
+    if (res?.code != 0) {
+      throw new Error(`Failed to create base: ${res?.msg}`);
+    }
+    return res.data?.app;
+  }
+
+  async updateBase(updateBaseArgs: UpdateBaseArgs, sessionId?: string) {
+    const client = this.getClient(sessionId);
+    const res = await this._client2?.bitable.v1.app.update(
+      {
+        data: {
+          name: updateBaseArgs.name
+        },
+        path: {
+          app_token: updateBaseArgs.app_token,
+        }
+      },
+      this.withUserAccessToken(),
+    );
+
+    if (res?.code != 0) {
+      throw new Error(`Failed to update base: ${res?.msg}`);
+    }
+    return res.data?.app;
+  }
+
+  async getBase(app_token: string, sessionId?: string) {
+    const client = this.getClient(sessionId);
+    const res = await this._client2?.bitable.v1.app.get({
+      path: {
+        app_token,
+      },
+    }, this.withUserAccessToken());
+
+    if (res?.code != 0) {
+      throw new Error(`Failed to get Base: ${res?.msg}`);
+    }
+    return res.data?.app;
+  }
+
+  async copyBase(copyBaseArgs: CopyBaseArgs, sessionId?: string) {
+    const client = this.getClient(sessionId);
+    const res = await this._client2?.bitable.v1.app.copy({
+      data: {
+        folder_token: copyBaseArgs.folder_token,
+      },
+      path: {
+        app_token: copyBaseArgs.app_token,
+      },
+    }, this.withUserAccessToken());
+
+    if (res?.code != 0) {
+      throw new Error(`Failed to copy base: ${res?.msg}`);
+    }
+    return res.data?.app;
+  }
+
+  async listRecords(args: ListRecordsArgs, sessionId?: string): Promise<BaseRecord[]> {
+    const client = this.getClient(sessionId);
+    const options = args.options;
+    const params = {
       page_size: 10,
-      ...options
+      ...options,
     };
 
     const records = [];
 
     try {
-      for await (const item of await client.base.appTableRecord.listWithIterator({
-        path: {
-          table_id,
-        },
+      for await (const item of await client.bitable.v1.appTableRecord.listWithIterator({
+        path: args,
+        // @ts-expect-error sdk fields_name类型有问题，接口是支持string[],但sdk类型是string
         params,
-      })) {
+      }, this.withUserAccessToken())) {
         if (item?.items) {
           records.push(...item.items);
         }
-        if (options?.maxDataNumber && records.length >= options.maxDataNumber) {
+        if (options?.recordLength && records.length >= options.recordLength) {
           break;
         }
       }
@@ -156,27 +191,30 @@ export class BaseService implements IBaseService {
     return records;
   }
 
-  async listTables(sessionId?: string) {
+  async listTables(listTablesArgs: ListTablesArgs, sessionId?: string) {
     const client = this.getClient(sessionId);
     const tables = [];
 
     try {
-      for await (const item of await client.base.appTable.listWithIterator({
+      for await (const item of await client.bitable.v1.appTable.listWithIterator({
         params: {
           page_size: 20,
         },
-      })) {
+        path: {
+          app_token: listTablesArgs.app_token,
+        },
+      }, this.withUserAccessToken())) {
         if (item?.items) {
           tables.push(...item.items);
         }
-        if (tables.length >= maxDataNumber) {
+        if (tables.length >= recordLength) {
           break;
         }
       }
     } catch (error) {
       throw new Error(`Failed to list tables: ${error}`);
     }
-    const session = sessionManager.getSession(sessionId!);
+    const session = sessionManager.getSession(sessionId || '');
 
     return {
       tables,
@@ -184,13 +222,11 @@ export class BaseService implements IBaseService {
     };
   }
 
-  async deleteTable(sessionId: string, tableId: string) {
+  async deleteTable(args: CommonTableArgs, sessionId?: string) {
     const client = this.getClient(sessionId);
-    const { data, code, msg } = await client.base.appTable.delete({
-      path: {
-        table_id: tableId,
-      },
-    });
+    const { data, code, msg } = await client.bitable.v1.appTable.delete({
+      path: args,
+    }, this.withUserAccessToken());
 
     if (code != 0) {
       throw new Error(`Failed to delete table: ${msg}`);
@@ -199,16 +235,9 @@ export class BaseService implements IBaseService {
     return { success: true };
   }
 
-  async updateTable(sessionId: string, tableId: string, name: string): Promise<{ name?: string }> {
+  async updateTable(updateTableArgs: UpdateTableArgs, sessionId?: string): Promise<{ name?: string }> {
     const client = this.getClient(sessionId);
-    const { data, code, msg } = await client.base.appTable.patch({
-      data: {
-        name,
-      },
-      path: {
-        table_id: tableId,
-      },
-    });
+    const { data, code, msg } = await client.bitable.v1.appTable.patch(updateTableArgs, this.withUserAccessToken());
 
     if (code != 0) {
       throw new Error(`Failed to update table: ${msg}`);
@@ -217,73 +246,41 @@ export class BaseService implements IBaseService {
     return data?.name ? { name: data?.name } : {};
   }
 
-  async listFields(sessionId: string, table_id: string): Promise<Field[]> {
+  async listFields(args: ListFieldsArgs, sessionId?: string): Promise<Field[]> {
     const client = this.getClient(sessionId);
     const fields = [];
-    for await (const item of await client.base.appTableField.listWithIterator({
-      params: {
-        page_size: 20,
-      },
-      path: {
-        table_id,
-      },
-    })) {
+    for await (const item of await client.bitable.v1.appTableField.listWithIterator({
+      path: args.path
+    }, this.withUserAccessToken())) {
       if (item?.items) {
         fields.push(...item.items);
       }
-      if (fields.length >= maxDataNumber) {
+      if (fields.length >= args.length) {
         break;
       }
     }
-    return fields.map(field => ({
+    return fields.map((field) => ({
       ...field,
-      description: typeof field.description === 'string' ? { text: field.description } : field.description
+      description: typeof field.description === 'string' ? { text: field.description } : field.description,
     }));
   }
 
-  async createField(sessionId: string, tableId: string, field: Field) {
+  async createField(createFieldArgs: CreateFieldArgs, sessionId?: string): Promise<Field | undefined> {
     const client = this.getClient(sessionId);
-    const { data, code, msg } = await client.base.appTableField.create({
-      data: field,
-      // {
-      //   field_name: field.field_name,
-      //   type: field.type,
-      //   property: field.property,
-      //   description: typeof field.description === 'string' ? { text: field.description } : undefined,
-      //   //@ts-expect-error
-      //   // sdk 目前枚举值类型没对齐开放平台，先忽略
-      //   ui_type: field.ui_type,
-      // },
-      path: {
-        table_id: tableId,
-      },
-    });
+    const { data, code, msg } = await client.bitable.v1.appTableField.create(createFieldArgs, this.withUserAccessToken());
 
     if (code != 0) {
       throw new Error(`Failed to create field: ${msg}`);
     }
 
     return data?.field;
-
-    // return {
-    //   field_name: data?.field?.field_name || '',
-    //   type: data?.field?.type || 0,
-    //   property: data?.field?.property,
-    //   description: data?.field?.description?.text || '',
-    //   ui_type: data?.field?.ui_type,
-    //   is_primary: data?.field?.is_primary,
-    //   field_id: data?.field?.field_id,
-    // };
   }
 
-  async deleteField(sessionId: string, tableId: string, fieldId: string) {
+  async deleteField(deleteFieldArgs: CommonFieldArgs, sessionId?: string) {
     const client = this.getClient(sessionId);
-    const { data, code, msg } = await client.base.appTableField.delete({
-      path: {
-        table_id: tableId,
-        field_id: fieldId,
-      },
-    });
+    const { data, code, msg } = await client.bitable.v1.appTableField.delete({
+      path: deleteFieldArgs,
+    }, this.withUserAccessToken());
 
     if (code != 0) {
       throw new Error(`Failed to delete field: ${msg}`);
@@ -292,24 +289,9 @@ export class BaseService implements IBaseService {
     return { success: true };
   }
 
-  async updateField(sessionId: string, tableId: string, fieldId: string, field: Field) {
+  async updateField(updateFieldArgs: UpdateFieldArgs, sessionId?: string) {
     const client = this.getClient(sessionId);
-    const { data, code, msg } = await client.base.appTableField.update({
-      data: field,
-      // data: {
-      //   field_name: field.field_name,
-      //   type: field.type,
-      //   property: field.property,
-      //   description: field.description ? { text: field.description } : undefined,
-      //   //@ts-expect-error
-      //   // sdk 目前枚举值类型没对齐开放平台，先忽略
-      //   ui_type: field.ui_type,
-      // },
-      path: {
-        table_id: tableId,
-        field_id: fieldId,
-      },
-    });
+    const { data, code, msg } = await client.bitable.v1.appTableField.update(updateFieldArgs, this.withUserAccessToken());
 
     if (code != 0) {
       throw new Error(`Failed to update field: ${msg}`);
@@ -318,16 +300,10 @@ export class BaseService implements IBaseService {
     return data?.field;
   }
 
-  async createRecord(sessionId: string, tableId: string, fields: TCreateRecordArgs) {
+  async createRecord(args: CreateRecordArgs, sessionId?: string) {
     const client = this.getClient(sessionId);
-    const { data, code, msg } = await client.base.appTableRecord.create({
-      data: {
-        fields,
-      },
-      path: {
-        table_id: tableId,
-      },
-    });
+    const { data, code, msg } = await client.bitable.v1.appTableRecord.create(args, this.withUserAccessToken());
+
 
     if (code != 0) {
       throw new Error(`Failed to create record: ${msg}`);
@@ -336,17 +312,9 @@ export class BaseService implements IBaseService {
     return data?.record || { fields: {} };
   }
 
-  async updateRecord(sessionId: string, tableId: string, recordId: string, fields: TCreateRecordArgs) {
+  async updateRecord(updateRecordArgs: UpdateRecordArgs, sessionId?: string) {
     const client = this.getClient(sessionId);
-    const { data, code, msg } = await client.base.appTableRecord.update({
-      data: {
-        fields,
-      },
-      path: {
-        table_id: tableId,
-        record_id: recordId,
-      },
-    });
+    const { data, code, msg } = await client.bitable.v1.appTableRecord.update(updateRecordArgs, this.withUserAccessToken());
 
     if (code != 0) {
       throw new Error(`Failed to update record: ${msg}`);
@@ -355,14 +323,11 @@ export class BaseService implements IBaseService {
     return data?.record || { fields: {} };
   }
 
-  async deleteRecord(sessionId: string, tableId: string, recordId: string) {
+  async deleteRecord(deleteRecordArgs: RecordArgs, sessionId?: string) {
     const client = this.getClient(sessionId);
-    const { code, msg, data } = await client.base.appTableRecord.delete({
-      path: {
-        table_id: tableId,
-        record_id: recordId,
-      },
-    });
+    const { code, msg, data } = await client.bitable.v1.appTableRecord.delete({
+      path: deleteRecordArgs,
+    }, this.withUserAccessToken());
 
     if (code != 0) {
       throw new Error(`Failed to delete record: ${msg}`);
@@ -371,14 +336,11 @@ export class BaseService implements IBaseService {
     return { success: true };
   }
 
-  async getRecord(sessionId: string, tableId: string, recordId: string): Promise<BaseRecord | null> {
+  async getRecord(getRecordArgs: RecordArgs, sessionId?: string): Promise<BaseRecord | null> {
     const client = this.getClient(sessionId);
-    const { data, code, msg } = await client.base.appTableRecord.get({
-      path: {
-        table_id: tableId,
-        record_id: recordId,
-      },
-    });
+    const { data, code, msg } = await client.bitable.v1.appTableRecord.get({
+      path: getRecordArgs,
+    }, this.withUserAccessToken());
 
     if (code != 0) {
       throw new Error(`Failed to get record: ${msg}`);
@@ -387,18 +349,9 @@ export class BaseService implements IBaseService {
     return data?.record || null;
   }
 
-  async createBatchRecord(sessionId: string, tableId: string, fields: TCreateRecordArgs[]) {
+  async createBatchRecord(createBatchRecordArgs: CreateBatchRecordArgs, sessionId?: string) {
     const client = this.getClient(sessionId);
-    const { data, code, msg } = await client.base.appTableRecord.batchCreate({
-      data: {
-        records: fields.map((field) => ({
-          fields: field,
-        })),
-      },
-      path: {
-        table_id: tableId,
-      },
-    }); 
+    const { data, code, msg } = await client.bitable.v1.appTableRecord.batchCreate(createBatchRecordArgs, this.withUserAccessToken());
 
     if (code != 0) {
       throw new Error(`Failed to create batch record: ${msg}`);
@@ -406,30 +359,23 @@ export class BaseService implements IBaseService {
 
     return data?.records || [];
   }
-  
 
-  async createTable(sessionId: string, data: CreateTable): Promise<CreateTableResponse> {
+  async createTable(createTableArgs: CreateTableArgs, sessionId?: string): Promise<CreateTableResponse> {
     const client = this.getClient(sessionId);
     const {
       data: response,
       code,
       msg,
-    } = await client.base.appTable.create({
+    } 
+    = await client.bitable.v1.appTable.create({
       data: {
-        table: {
-          name: data.name,
-          default_view_name: data.default_view_name,
-          // sdk 目前枚举值类型没对齐开放平台，先忽略
-          fields: data.fields?.map((field) => ({
-            field_name: field.field_name,
-            type: field.type,
-            ui_type: field.ui_type,
-            property: field.property,
-            description: typeof field.description === 'string' ? { text: field.description } : field.description,
-          })),
-        },
+        // @ts-expect-error sdk此api目前ui_type枚举值类型没对齐开放平台和其他api（少了个email），先忽略
+        table: createTableArgs.table,
       },
-    });
+      path: {
+        app_token: createTableArgs.app_token,
+      },
+    }, this.withUserAccessToken());
 
     if (code != 0 || !response?.table_id || !response.field_id_list?.length) {
       throw new Error(`Failed to create table: ${msg}`);

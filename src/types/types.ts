@@ -3,18 +3,60 @@ import { z } from 'zod';
 import { RecordFieldsSchema } from './fieldValueSchemas.js';
 import { FieldSchema } from './fieldSchemas.js';
 
-
+// ========== Base Response Schemas ==========
 export const ResponseSchema = (dataSchema: z.ZodType<object>) =>
   z.object({
     code: z.number(),
     data: dataSchema,
   });
 
-// Zod schemas for API responses
 export const BaseSchema = z.object({
   id: z.string(),
   name: z.string(),
   permissionLevel: z.string(),
+});
+
+// ========== View Related Schemas ==========
+export const ViewSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  type: z.string(),
+});
+
+// ========== Table Related Schemas ==========
+export const TableSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  description: z.string().optional(),
+  primaryFieldId: z.string(),
+  fields: z.array(FieldSchema.and(z.object({ id: z.string() }))),
+  views: z.array(ViewSchema),
+});
+
+export const BaseSchemaResponseSchema = z.object({
+  tables: z.array(TableSchema),
+});
+
+export const CommonTableArgsSchema = z.object({
+  table_id: z.string(),
+  app_token: z.string(),
+});
+
+export const CreateTableArgsSchema = z.object({
+  table: z.object({
+    name: z.string().optional(),
+    fields: z.array(FieldSchema).optional().describe(`Table fields. Rules:
+      - At least one field must be specified.
+      - The primary (first) field must be one of: single line text, long text, date, phone number, email, URL, number, currency, percent, duration, formula, autonumber, barcode.
+      `),
+  }),
+  app_token: z.string(),
+});
+
+export const CreateTableResponseSchema = z.object({
+  table_id: z.string().optional(),
+  default_view_id: z.string().optional(),
+  field_id_list: z.array(z.string()).optional(),
 });
 
 export const ListTablesResponseSchema = z.array(
@@ -25,6 +67,7 @@ export const ListTablesResponseSchema = z.array(
   }),
 );
 
+// ========== Field Related Schemas ==========
 export const FieldOptionsSchema = z
   .object({
     isReversed: z.boolean().optional(),
@@ -36,187 +79,23 @@ export const FieldOptionsSchema = z
   })
   .passthrough();
 
-// export const FieldSchema = z
-//   .object({
-//     field_name: z.string(),
-//     type: z.number().describe(`
-//     type使用FieldType枚举值, 相同类型用ui_type区分
-//     enum FieldType {
-//       NotSupport = 0,
-//       Text = 1, // 文本（默认值）、条码（需声明 "ui_type": "Barcode"）、邮箱（需声明"ui_type": "Email")
-//       Number = 2, // 数字（默认值）、进度（需声明 "ui_type": "Progress"）、货币（需声明 "ui_type": "Currency"）、评分（需声明 "ui_type": "Rating"
-//       SingleSelect = 3,
-//       MultiSelect = 4,
-//       DateTime = 5,
-//       Checkbox = 7,
-//       User = 11,
-//       Phone = 13,
-//       Url = 15,
-//       Attachment = 17,
-//       SingleLink = 18,
-//       Lookup = 19,
-//       Formula = 20,
-//       // 双向关联
-//       DuplexLink = 21,
-//       // 地理位置
-//       Location = 22,
-//       // 群组
-//       GroupChat = 23,
-//       // 阶段
-//       Stage = 24,
-//       // Object 字段
-//       Object = 25,
-//       // 高级权限下不可见的列
-//       Denied = 403,
-
-//       /**
-//        * 引用类型字段，前后端约定用10xx公共前缀开头
-//        */
-//       CreatedTime = 1001,
-//       ModifiedTime = 1002,
-//       CreatedUser = 1003,
-//       ModifiedUser = 1004,
-//       // 自动编号
-//       AutoNumber = 1005,
-//       // 按钮字段
-//       VirtualTrigger = 3001, // 仅含 meta，不含 cellValue 的字段
-//     }  
-//   `),
-//     property: z
-//       .object({
-//         options: z
-//           .array(
-//             z.object({
-//               name: z.string().optional(),
-//               id: z.string().optional(),
-//               color: z.number().optional(),
-//             }),
-//           )
-//           .optional(),
-//         formatter: z.string().optional(),
-//         date_formatter: z.string().optional(),
-//         auto_fill: z.boolean().optional(),
-//         multiple: z.boolean().optional(),
-//         table_id: z.string().optional(),
-//         table_name: z.string().optional(),
-//         back_field_name: z.string().optional(),
-//         auto_serial: z
-//           .object({
-//             type: z.enum(['custom', 'auto_increment_number']),
-//             options: z
-//               .array(
-//                 z.object({
-//                   type: z.enum(['system_number', 'fixed_text', 'created_time']),
-//                   value: z.string(),
-//                 }),
-//               )
-//               .optional(),
-//           })
-//           .optional(),
-//         location: z
-//           .object({
-//             input_type: z.enum(['only_mobile', 'not_limit']),
-//           })
-//           .optional(),
-//         formula_expression: z.string().optional(),
-//         allowed_edit_modes: z
-//           .object({
-//             manual: z.boolean().optional(),
-//             scan: z.boolean().optional(),
-//           })
-//           .optional(),
-//         min: z.number().optional(),
-//         max: z.number().optional(),
-//         range_customize: z.boolean().optional(),
-//         currency_code: z.string().optional(),
-//         rating: z
-//           .object({
-//             symbol: z.string().optional(),
-//           })
-//           .optional(),
-//       })
-//       .optional(),
-//     description: z.string().optional(),
-//     is_primary: z.boolean().optional(),
-//     field_id: z.string().optional(),
-//     ui_type: z
-//       .enum([
-//         'Text',
-//         'Email',
-//         'Barcode',
-//         'Number',
-//         'Progress',
-//         'Currency',
-//         'Rating',
-//         'SingleSelect',
-//         'MultiSelect',
-//         'DateTime',
-//         'Checkbox',
-//         'User',
-//         'GroupChat',
-//         'Phone',
-//         'Url',
-//         'Attachment',
-//         'SingleLink',
-//         'Formula',
-//         'Lookup',
-//         'DuplexLink',
-//         'Location',
-//         'CreatedTime',
-//         'ModifiedTime',
-//         'CreatedUser',
-//         'ModifiedUser',
-//         'AutoNumber',
-//         'Button',
-//       ])
-//       .optional(),
-//     is_hidden: z.boolean().optional(),
-//   })
-//   .describe('The config of a field. NB: Formula fields cannot be created with this MCP due to a limitation in the base API.');
-
-export const ViewSchema = z.object({
-  id: z.string(),
-  name: z.string(),
-  type: z.string(),
-});
-
-export const TableSchema = z.object({
-  id: z.string(),
-  name: z.string(),
-  description: z.string().optional(),
-  primaryFieldId: z.string(),
-  fields: z.array(FieldSchema.and(z.object({ id: z.string() }))),
-  views: z.array(ViewSchema),
-});
-
-// 表格Schema
-export const CreateTableSchema = z.object({
-  name: z.string().optional(),
-  default_view_name: z.string().optional(),
-  fields: z.array(FieldSchema).optional(),
-});
-
-// 类型导出
-export type CreateTable = z.infer<typeof CreateTableSchema>;
-
-export const BaseSchemaResponseSchema = z.object({
-  tables: z.array(TableSchema),
-});
-
-// Add Zod schema for ListRecordsOptions
+// ========== Record Related Schemas ==========
 export const ListRecordsOptionsSchema = z.object({
   fields: z.array(z.string()).optional(),
   sort: z.array(z.string()).optional(),
   filter: z.string().optional().describe('Filter records by a condition. Use the field name and operator to specify the condition. For example, AND(CurrentValue.[订单号].contains("004"),CurrentValue.[订单日期]= TODAY())'),
-  maxDataNumber: z.number().optional().default(20),
+  recordLength: z.number().optional().default(20),
 });
 
-export type ListRecordsOptions = z.infer<typeof ListRecordsOptionsSchema>;
-
-// Zod schemas for tool arguments
+// ========== API Argument Schemas ==========
 export const ListRecordsArgsSchema = z.object({
-  tableId: z.string(),
+  table_id: z.string(),
+  app_token: z.string(),
   options: ListRecordsOptionsSchema
+});
+
+export const ListTablesArgsSchema = z.object({
+  app_token: z.string(),
 });
 
 export const GetAppTokenArgsSchema = z.object({
@@ -224,7 +103,7 @@ export const GetAppTokenArgsSchema = z.object({
 });
 
 export const GetTableSchemaArgsSchema = z.object({
-  tableId: z.string(),
+  table_id: z.string(),
 });
 
 export const SearchRecordsArgsSchema = z.object({
@@ -253,84 +132,127 @@ export const DescribeTableArgsSchema = z.object({
   detailLevel: TableDetailLevelSchema.optional().default('full'),
 });
 
-export const ListTablesArgsSchema = z.object({
-  // baseId: z.string(),
-  // detailLevel: TableDetailLevelSchema.optional().default('full'),
-});
-
-export const GetRecordArgsSchema = z.object({
-  baseId: z.string(),
-  tableId: z.string(),
-  recordId: z.string(),
+export const RecordArgsSchema = z.object({
+  app_token: z.string(),
+  table_id: z.string(),
+  record_id: z.string(),
 });
 
 export const CreateRecordArgsSchema = z.object({
-  tableId: z.string(),
-  fields: RecordFieldsSchema,
+  path: CommonTableArgsSchema,
+  data: z.object({
+    fields: RecordFieldsSchema,
+  }),
 });
 
-export const UpdateRecordsArgsSchema = z.object({
-  tableId: z.string(),
-  recordId: z.string(),
-  fields: RecordFieldsSchema,
+export const CreateBatchRecordArgsSchema = z.object({
+  path: CommonTableArgsSchema,
+  data: z.object({
+    records: z.array(z.object({
+      fields: RecordFieldsSchema,
+    })),
+  }),
+});
+export const UpdateRecordArgsSchema = z.object({
+  path: RecordArgsSchema,
+  data: z.object({
+    fields: RecordFieldsSchema,
+  }),
 });
 
-export const DeleteRecordsArgsSchema = z.object({
-  baseId: z.string(),
-  tableId: z.string(),
-  recordIds: z.array(z.string()),
-});
+// export const DeleteRecordsArgsSchema = z.object({
+//   baseId: z.string(),
+//   tableId: z.string(),
+//   recordIds: z.array(z.string()),
+// });
 
-export const CreateTableArgsSchema = z.object({
-  // baseId: z.string(),
-  name: z.string().describe('Name for the new table. Must be unique in the base.'),
-  // description: z.string().optional(),
-  fields: z.array(FieldSchema).describe(`Table fields. Rules:
-- At least one field must be specified.
-- The primary (first) field must be one of: single line text, long text, date, phone number, email, URL, number, currency, percent, duration, formula, autonumber, barcode.
-`),
-});
+// export const CreateTableArgsSchema = z.object({
+//   name: z.string().describe('Name for the new table. Must be unique in the base.'),
+//   fields: z.array(FieldSchema).describe(`Table fields. Rules:
+// - At least one field must be specified.
+// - The primary (first) field must be one of: single line text, long text, date, phone number, email, URL, number, currency, percent, duration, formula, autonumber, barcode.
+// `),
+// });
 
 export const UpdateTableArgsSchema = z.object({
-  // baseId: z.string(),
-  tableId: z.string(),
-  name: z.string(),
-  // description: z.string().optional(),
+  data: z.object({
+    name: z.string(),
+  }),
+  path: CommonTableArgsSchema,
 });
 
 export const CreateFieldArgsSchema = z.object({
-  baseId: z.string(),
-  tableId: z.string(),
-  // This is used as a workaround for https://github.com/orgs/modelcontextprotocol/discussions/90
-  nested: z.object({
-    field: FieldSchema,
-  }),
+  path: CommonTableArgsSchema,
+  data: FieldSchema,
+});
+
+export const CreateBaseArgsSchema = z.object({
+  name: z.string().describe('Name for the new base/table'),
+  folder_token: z.string().optional().describe('Folder token where the base will be created'),
+});
+
+export const UpdateBaseArgsSchema = z.object({
+  app_token: z.string().describe('ID of the base to update'),
+  name: z.string().optional().describe('New name for the base'),
+  folder_token: z.string().optional().describe('New folder token for the base'),
+});
+
+export const GetBaseArgsSchema = z.object({
+  app_token: z.string().describe('ID of the base to get'),
+});
+
+export const CopyBaseArgsSchema = z.object({
+  app_token: z.string().describe('ID of the base to copy'),
+  folder_token: z.string().optional().describe('New folder token for the base'),
+});
+
+export const ListFieldsArgsSchema = z.object({
+  length: z.number().optional().default(100).describe('Maximum number of fields to return. Defaults to 100.'),
+  path: CommonTableArgsSchema,
+});
+
+export const CommonFieldArgsSchema = CommonTableArgsSchema.extend({
+  field_id: z.string(),
 });
 
 export const UpdateFieldArgsSchema = z.object({
-  // baseId: z.string(),
-  tableId: z.string(),
-  fieldId: z.string(),
-  nested: z.object({
-    field: FieldSchema,
-  }),
-  name: z.string().optional(),
-  description: z.string().optional(),
+  data: FieldSchema,
+  path: CommonFieldArgsSchema,
 });
 
+// ========== Type Definitions ==========
 export type ListTablesResponse = z.infer<typeof ListTablesResponseSchema>;
 export type BaseSchemaResponse = z.infer<typeof BaseSchemaResponseSchema>;
 export type Base = z.infer<typeof BaseSchema>;
 export type Table = z.infer<typeof TableSchema>;
 export type Field = z.infer<typeof FieldSchema>;
+export type ListRecordsOptions = z.infer<typeof ListRecordsOptionsSchema>;
+export type ListRecordsArgs = z.infer<typeof ListRecordsArgsSchema>;
+export type ListTablesArgs = z.infer<typeof ListTablesArgsSchema>;
+export type RecordArgs = z.infer<typeof RecordArgsSchema>;
+export type CreateTableArgs = z.infer<typeof CreateTableArgsSchema>;
+export type CreateTableResponse = z.infer<typeof CreateTableResponseSchema>;
+export type UpdateTableArgs = z.infer<typeof UpdateTableArgsSchema>;
+export type UpdateFieldArgs = z.infer<typeof UpdateFieldArgsSchema>;
+export type CommonTableArgs = z.infer<typeof CommonTableArgsSchema>;
+export type CreateBaseArgs = z.infer<typeof CreateBaseArgsSchema>;
+export type UpdateBaseArgs = z.infer<typeof UpdateBaseArgsSchema>;
+export type GetBaseArgs = z.infer<typeof GetBaseArgsSchema>;
+export type CopyBaseArgs = z.infer<typeof CopyBaseArgsSchema>;
+export type CreateRecordArgs = z.infer<typeof CreateRecordArgsSchema>;
+export type UpdateRecordArgs = z.infer<typeof UpdateRecordArgsSchema>;
+export type CreateBatchRecordArgs = z.infer<typeof CreateBatchRecordArgsSchema>;
+// export type DeleteRecordsArgs = z.infer<typeof DeleteRecordsArgsSchema>;
+// export type GetRecordArgs = z.infer<typeof RecordArgsSchema>;
+export type CreateFieldArgs = z.infer<typeof CreateFieldArgsSchema>;
+export type CommonFieldArgs = z.infer<typeof CommonFieldArgsSchema>;
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type FieldSet = Record<string, any>;
+
 export type BaseRecord = {
   fields: Record<
     string,
     | string
-    | number
-    | number
     | number
     | boolean
     | {
@@ -391,33 +313,32 @@ export type BaseRecord = {
   last_modified_time?: number | undefined;
 };
 
-// export type TCreateRecordArgs = z.infer<typeof RecordFieldsSchema>['fields'];
-
-export type TCreateRecordArgs = z.infer<typeof RecordFieldsSchema>;
-
-
-
 export interface BaseServiceResponse {
   success: boolean;
 }
 
 export interface IBaseService {
-  listRecords(sessionId: string, tableId: string, options?: ListRecordsOptions): Promise<BaseRecord[]>;
-  listTables(sessionId?: string): Promise<{
+  createBase(createBaseArgs: CreateBaseArgs, sessionId?: string): Promise<any>;
+  updateBase(updateBaseArgs: UpdateBaseArgs, sessionId?: string): Promise<any>;
+  copyBase(copyBaseArgs: CopyBaseArgs, sessionId?: string): Promise<any>;
+  getBase(appToken: string, sessionId?: string): Promise<any>;
+  listRecords(listRecordsArgs: ListRecordsArgs, sessionId?: string): Promise<BaseRecord[]>;
+  listTables(listTablesArgs: ListTablesArgs, sessionId?: string): Promise<{
     tables: ListTablesResponse;
     baseToken: string;
   }>;
-  createTable(sessionId: string, data: CreateTable): Promise<CreateTableResponse>;
-  updateTable(sessionId: string, tableId: string, name: string): Promise<{ name?: string }>;
-  deleteTable(sessionId: string, tableId: string): Promise<BaseServiceResponse>;
-  listFields(sessionId: string, tableId: string): Promise<Field[]>;
-  createField(sessionId: string, tableId: string, field: Field): Promise<Field | undefined>;
-  updateField(sessionId: string, tableId: string, fieldId: string, field: Field): Promise<Field | undefined>;
-  deleteField(sessionId: string, tableId: string, fieldId: string): Promise<BaseServiceResponse>;
-  createRecord(sessionId: string, tableId: string, fields: TCreateRecordArgs): Promise<BaseRecord>;
-  updateRecord(sessionId: string, tableId: string, recordId: string, fields: TCreateRecordArgs): Promise<BaseRecord>;
-  deleteRecord(sessionId: string, tableId: string, recordId: string): Promise<BaseServiceResponse>;
-  getRecord(sessionId: string, tableId: string, recordId: string): Promise<BaseRecord | null>;
+  createTable(data: CreateTableArgs, sessionId?: string): Promise<CreateTableResponse>;
+  updateTable(updateTableArgs: UpdateTableArgs, sessionId?: string): Promise<{ name?: string }>;
+  deleteTable(deleteTableArgs: CommonTableArgs, sessionId?: string): Promise<BaseServiceResponse>;
+  listFields(listFieldsArgs: ListFieldsArgs, sessionId?: string): Promise<Field[]>;
+  createField(createFieldArgs: CreateFieldArgs, sessionId?: string): Promise<Field | undefined>;
+  updateField(updateFieldArgs: UpdateFieldArgs, sessionId?: string): Promise<Field | undefined>;
+  deleteField(deleteFieldArgs: CommonFieldArgs, sessionId?: string): Promise<BaseServiceResponse>;
+  createRecord(createRecordArgs: CreateRecordArgs, sessionId?: string): Promise<BaseRecord>;
+  updateRecord(updateRecordArgs: UpdateRecordArgs, sessionId?: string): Promise<BaseRecord>;
+  deleteRecord(deleteRecordArgs: RecordArgs, sessionId?: string): Promise<BaseServiceResponse>;
+  getRecord(getRecordArgs: RecordArgs, sessionId?: string): Promise<BaseRecord | null>;
+  createBatchRecord(createBatchRecordArgs: CreateBatchRecordArgs, sessionId?: string): Promise<BaseRecord[]>;
 }
 
 export interface IBaseMCPServer {
@@ -492,11 +413,5 @@ export interface UpdateTextResourceRequest {
   arguments?: TextResourceArgument[];
 }
 
-export const CreateTableResponseSchema = z.object({
-  table_id: z.string().optional(),
-  default_view_id: z.string().optional(),
-  field_id_list: z.array(z.string()).optional(),
-});
-
-export type CreateTableResponse = z.infer<typeof CreateTableResponseSchema>;
-
+// export type ListFieldsParams = z.infer<typeof ListFieldsParamsSchema>;
+export type ListFieldsArgs = z.infer<typeof ListFieldsArgsSchema>;
