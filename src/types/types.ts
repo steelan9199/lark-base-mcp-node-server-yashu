@@ -91,7 +91,7 @@ export const ListRecordsArgsSchema = z.object({
   table_id: z.string(),
   app_token: z.string(),
   user_access_token: z.string(),
-  field_names: z.array(z.string()).optional(),
+  field_names: z.string().optional().describe('Use name rather than id to specify the fields to return.It needs to be formatted as a JSON array string'),
   sort: z.array(z.string()).optional(),
   filter: z.string().optional().describe('eg. AND(CurrentValue.[订单号].contains("004"),CurrentValue.[订单日期]= TODAY())'),
   recordLength: z.number().optional().default(20),
