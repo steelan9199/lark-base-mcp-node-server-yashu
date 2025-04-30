@@ -15,14 +15,12 @@ import { Transport } from '@modelcontextprotocol/sdk/shared/transport.js';
 import {
   ListRecordsArgsSchema,
   ListTablesArgsSchema,
-  DescribeTableArgsSchema,
   CreateRecordArgsSchema,
   UpdateRecordArgsSchema,
   CreateTableArgsSchema,
   UpdateTableArgsSchema,
   SearchRecordsArgsSchema,
-  GetAppTokenArgsSchema,
-  GetTableSchemaArgsSchema,
+  GetAppTokenArgs,
   IBaseService,
   IBaseMCPServer,
   CreateBaseArgsSchema,
@@ -36,11 +34,12 @@ import {
   CommonTableArgsSchema,
   RecordArgsSchema,
   CreateBatchRecordArgsSchema,
+  GetAppTokenArgsSchema,
 } from '../types/types.js';
 import { SSEServerTransport } from '@modelcontextprotocol/sdk/server/sse.js';
+import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { currentVersion } from '../utils/version.js';
-import { StringifyOptions } from 'querystring';
-import { RecordFieldsSchema } from '../types/fieldValueSchemas.js';
+import { uuid } from '../utils/utils.js';
 
 const getInputSchema = (schema: z.ZodType<object>): ListToolsResult['tools'][0]['inputSchema'] => {
   const jsonSchema = zodToJsonSchema(schema);
@@ -54,6 +53,20 @@ const getInputSchema = (schema: z.ZodType<object>): ListToolsResult['tools'][0][
 
 const formatToolResponse = (data: unknown, isError = false): CallToolResult => {
   // console.log('>>>formatToolResponse', data, isError);
+
+  if (typeof data === 'object' && data !== null && 'useMarkdown' in data && 'content' in data) {
+    return {
+      content: [
+        {
+          type: 'text',
+          mimeType: 'text/x-markdown',
+          text: JSON.stringify(data.content),
+        },
+      ],
+      isError,
+    };
+  }
+
   return {
     content: [
       {
@@ -71,10 +84,14 @@ export class BaseMCPServer implements IBaseMCPServer {
 
   private baseService: IBaseService;
 
+  private stdioUUID: string;
+
   private readonly SCHEMA_PATH = 'schema';
 
   constructor(baseService: IBaseService) {
     this.baseService = baseService;
+    // this.stdioUUID = uuid();
+    this.stdioUUID = '123';
     this.server = new Server(
       {
         name: 'base-mcp-server',
@@ -138,9 +155,20 @@ export class BaseMCPServer implements IBaseMCPServer {
     return {
       tools: [
         {
-          name: 'get_authorization',
-          description: 'Get authorization token',
+          name: 'get_authorization_url',
+          description:
+            'Get authorization URL to generate user_access_token. If this tool returns the userAccessToken, skip the get_authorization_token tool, else generate a hyperlink to guide the user to visit the URL and authorize.',
           inputSchema: getInputSchema(z.object({})),
+        },
+        {
+          name: 'get_authorization_token',
+          description: 'Get user_access_token for base tools calling. If the user has already acquired the token, skip this step.',
+          inputSchema: getInputSchema(z.object({})),
+        },
+        {
+          name: 'get_app_token',
+          description: 'Get app_token from a url if the user wants to operate with base',
+          inputSchema: getInputSchema(GetAppTokenArgsSchema),
         },
         {
           name: 'list_records',
@@ -182,21 +210,21 @@ export class BaseMCPServer implements IBaseMCPServer {
           description: 'Update a table in a app',
           inputSchema: getInputSchema(UpdateTableArgsSchema),
         },
-        {
-          name: 'delete_table',
-          description: 'Delete a table in a app',
-          inputSchema: getInputSchema(CommonTableArgsSchema),
-        },
-        {
-          name: 'list_fields',
-          description: 'List all fields in a table',
-          inputSchema: getInputSchema(ListFieldsArgsSchema),
-        },
-        {
-          name: 'create_field',
-          description: 'Create a new field in a table',
-          inputSchema: getInputSchema(CreateFieldArgsSchema),
-        },
+        // {
+        //   name: 'delete_table',
+        //   description: 'Delete a table in a app',
+        //   inputSchema: getInputSchema(CommonTableArgsSchema),
+        // },
+        // {
+        //   name: 'list_fields',
+        //   description: 'List all fields in a table',
+        //   inputSchema: getInputSchema(ListFieldsArgsSchema),
+        // },
+        // {
+        //   name: 'create_field',
+        //   description: 'Create a new field in a table',
+        //   inputSchema: getInputSchema(CreateFieldArgsSchema),
+        // },
         {
           name: 'update_field',
           description: 'Update a field in a table',
@@ -220,13 +248,15 @@ export class BaseMCPServer implements IBaseMCPServer {
         {
           name: 'update_record',
           description: 'Update an existing record in a table',
-          inputSchema: getInputSchema(z.object({
-            path: RecordArgsSchema,
-            data: z.object({
-              // todo 这里先any，要不然cursor 报错 your message is too long
-              fields: z.any(),
+          inputSchema: getInputSchema(
+            z.object({
+              path: RecordArgsSchema,
+              data: z.object({
+                // todo 这里先any，要不然cursor 报错 your message is too long
+                fields: z.any(),
+              }),
             }),
-          })),
+          ),
         },
         {
           name: 'get_record',
@@ -240,14 +270,27 @@ export class BaseMCPServer implements IBaseMCPServer {
   private async handleCallTool(request: z.infer<typeof CallToolRequestSchema>): Promise<CallToolResult> {
     try {
       const transport = this.server.transport;
-      const sessionId = transport?.sessionId as string;
-      if (transport instanceof SSEServerTransport && !sessionId) {
-        throw new Error('Session ID is required');
+      let sessionId = transport?.sessionId as string;
+      if (transport instanceof SSEServerTransport) {
+        if (!sessionId) {
+          throw new Error('Session ID is required');
+        }
+      } else if (transport instanceof StdioServerTransport) {
+        sessionId = this.stdioUUID;
       }
 
       switch (request.params.name) {
-        case 'get_authorization': {
-          const base = await this.baseService.getAuthorization();
+        case 'get_authorization_url': {
+          const base = await this.baseService.getAuthUrl(sessionId);
+          return formatToolResponse(base);
+        }
+        case 'get_authorization_token': {
+          const base = await this.baseService.getAuthToken(sessionId);
+          return formatToolResponse(base);
+        }
+        case 'get_app_token': {
+          const args = GetAppTokenArgsSchema.parse(request.params.arguments);
+          const base = await this.baseService.getAppToken(args, sessionId);
           return formatToolResponse(base);
         }
         case 'create_base': {
@@ -261,8 +304,8 @@ export class BaseMCPServer implements IBaseMCPServer {
           return formatToolResponse(base);
         }
         case 'get_base': {
-          const args = GetBaseArgsSchema.parse(request.params.arguments); 
-          const base = await this.baseService.getBase(args.app_token, sessionId);
+          const args = GetBaseArgsSchema.parse(request.params.arguments);
+          const base = await this.baseService.getBase(args, sessionId);
           return formatToolResponse(base);
         }
         case 'copy_base': {
@@ -275,7 +318,7 @@ export class BaseMCPServer implements IBaseMCPServer {
           const records = await this.baseService.listTables(args, sessionId);
           return formatToolResponse(records);
         }
-        case 'create_table': {  
+        case 'create_table': {
           const args = CreateTableArgsSchema.parse(request.params.arguments);
           const table = await this.baseService.createTable(args, sessionId);
           return formatToolResponse(table);
@@ -330,11 +373,11 @@ export class BaseMCPServer implements IBaseMCPServer {
           const record = await this.baseService.updateRecord(args, sessionId);
           return formatToolResponse(record);
         }
-        // case 'get_record': {
-        //   const args = RecordArgsSchema.parse(request.params.arguments);
-        //   const record = await this.baseService.getRecord(args, sessionId);
-        //   return formatToolResponse(record);
-        // }
+        case 'get_record': {
+          const args = RecordArgsSchema.parse(request.params.arguments);
+          const record = await this.baseService.getRecord(args, sessionId);
+          return formatToolResponse(record);
+        }
         // case 'create_batch_record': {
         //   const args = CreateBatchRecordArgsSchema.parse(request.params.arguments);
         //   const records = await this.baseService.createBatchRecord(args, sessionId);

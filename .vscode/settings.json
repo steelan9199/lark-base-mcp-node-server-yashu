@@ -1,0 +1,7 @@
+{
+    "typescript.tsdk": "node_modules/typescript/lib",
+    "typescript.enablePromptUseWorkspaceTsdk": true,
+    "javascript.validate.enable": true,
+    "typescript.validate.enable": true,
+    "typescript.tsserver.nodePath": "/Users/bytedance/.nvm/versions/node/v22.14.0/bin/node"
+} 

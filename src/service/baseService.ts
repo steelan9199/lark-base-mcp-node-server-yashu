@@ -6,8 +6,6 @@ import {
   BaseRecord,
   FieldSet,
   Field,
-  ListTablesResponse,
-  ListRecordsOptions,
   Table,
   CreateTableArgs,
   CreateTableResponse,
@@ -27,13 +25,18 @@ import {
   CreateRecordArgs,
   UpdateRecordArgs,
   RecordArgs,
-  CreateBatchRecordArgs
+  CreateBatchRecordArgs,
+  GetAppTokenArgs
 } from '../types/types.js';
 import { FieldType } from '../types/enums.js';
 import { sessionManager } from './sessionManager.js';
 import { Client, withUserAccessToken } from '@larksuiteoapi/node-sdk';
 
-const recordLength = 100;
+const maxRecordLength = 100;
+
+const isDev = process.env.NODE_ENV === 'development';
+
+const BASE_AUTHORIZE_URL = 'https://bytedance.feishu-boe.net/space/api/bitable/base_ai/v1/authorize/get_token';
 
 const optionHandler = (value: any, options: any[]) => {
   const optVal = value?.toString?.() ?? value ?? null;
@@ -53,6 +56,7 @@ export class BaseService implements IBaseService {
       appId: '',
       appSecret: '',
       disableTokenCache: true,
+      domain: isDev ? 'https://open.feishu-boe.cn' : '',
     });
     this._client = this._client2;
 
@@ -92,44 +96,97 @@ export class BaseService implements IBaseService {
     return withUserAccessToken('u-jlJhgLaSp6XVQCZqflZatElhgj0M10ypjG20glmyw5V7');
   }
 
-  async getAuthorization() {
-    return await this._client2?.httpInstance.get('https://bytedance.feishu-boe.net/space/api/bitable/base_ai/v1/authorize/get_token?sessionId=233', {
+  async getAuthUrl(sessionId?: string) {
+    const data = await this._client2?.httpInstance.get(BASE_AUTHORIZE_URL + `?sessionId=${sessionId}`, {
       headers: {
-        'x-tt-env': 'boe_ai_solo',
+        'x-tt-env': 'boe_mcp_authorize',
       },
     });
+    if (data?.code != 0 || (!data?.data?.authenticationUrl && !data?.data?.userAccessToken)) {
+      throw new Error(`Failed to get authorization: ${JSON.stringify(data)}`);
+    }
+
+    console.log('getAuthorizationUrl', data.data);
+
+    if (data.data.userAccessToken) {
+      return data.data.userAccessToken;
+    }
+    return {
+      authUrl: data.data.authenticationUrl
+    };
   }
 
-  async createBase(createBaseArgs: CreateBaseArgs, sessionId?: string) {
+  async getAuthToken(sessionId?: string) {
+    const data = await this._client2?.httpInstance.get(BASE_AUTHORIZE_URL + `?sessionId=${sessionId}`, {
+      headers: {
+        'x-tt-env': 'boe_mcp_authorize',
+      },
+    });
+
+    if (data?.code != 0 || !data?.data?.userAccessToken) {
+      throw new Error(`Failed to get authorization token: ${JSON.stringify(data)}`);
+    }
+    console.log('getAuthorizationToken', data.data);
+    return data?.data?.userAccessToken;
+  }
+
+  async getAppToken(args: GetAppTokenArgs, sessionId?: string) {
+    const url = new URL(args.url);
+    if (url.pathname.startsWith('/wiki/')) {
+      const wikiToken = url.pathname.split('/wiki/')[1];
+      if (wikiToken) {
+        const res = await this._client2?.wiki.v2.space.getNode({
+          params: {
+            token: wikiToken,
+          },
+        }, withUserAccessToken(args.user_access_token));
+        
+        if (res?.code !== 0) {
+          throw new Error(`Failed to get wiki space: ${JSON.stringify(res)}`);
+        }
+        return res.data?.node?.node_token;
+      }
+      throw new Error('Invalid wiki url');
+    } else if (url.pathname.startsWith('/base/')) {
+      const baseToken = url.pathname.split('/base/')[1].split('?')[0];
+      if (baseToken) {
+        return baseToken;
+      }
+      throw new Error('Invalid base url');
+    }
+    throw new Error('URL not supported');
+  }
+
+  async createBase(args: CreateBaseArgs, sessionId?: string) {
     const client = this.getClient(sessionId);
     const res = await this._client2?.bitable.v1.app.create(
       {
         data: {
-          name: createBaseArgs.name,
-          folder_token: createBaseArgs.folder_token,
+          name: args.name,
+          folder_token: args.folder_token,
         },
       },
-      this.withUserAccessToken(),
+      withUserAccessToken(args.user_access_token)
     );
 
     if (res?.code != 0) {
-      throw new Error(`Failed to create base: ${res?.msg}`);
+      throw new Error(`Failed to create base: ${JSON.stringify(res)}`);
     }
     return res.data?.app;
   }
 
-  async updateBase(updateBaseArgs: UpdateBaseArgs, sessionId?: string) {
+  async updateBase(args: UpdateBaseArgs, sessionId?: string) {
     const client = this.getClient(sessionId);
     const res = await this._client2?.bitable.v1.app.update(
       {
         data: {
-          name: updateBaseArgs.name
+          name: args.name
         },
         path: {
-          app_token: updateBaseArgs.app_token,
+          app_token: args.app_token,
         }
       },
-      this.withUserAccessToken(),
+      withUserAccessToken(args.user_access_token),
     );
 
     if (res?.code != 0) {
@@ -138,13 +195,13 @@ export class BaseService implements IBaseService {
     return res.data?.app;
   }
 
-  async getBase(app_token: string, sessionId?: string) {
+  async getBase(args: GetBaseArgs, sessionId?: string) {
     const client = this.getClient(sessionId);
     const res = await this._client2?.bitable.v1.app.get({
       path: {
-        app_token,
+        app_token: args.app_token,
       },
-    }, this.withUserAccessToken());
+    }, withUserAccessToken(args.user_access_token));
 
     if (res?.code != 0) {
       throw new Error(`Failed to get Base: ${res?.msg}`);
@@ -152,16 +209,16 @@ export class BaseService implements IBaseService {
     return res.data?.app;
   }
 
-  async copyBase(copyBaseArgs: CopyBaseArgs, sessionId?: string) {
+  async copyBase(args: CopyBaseArgs, sessionId?: string) {
     const client = this.getClient(sessionId);
     const res = await this._client2?.bitable.v1.app.copy({
       data: {
-        folder_token: copyBaseArgs.folder_token,
+        folder_token: args.folder_token,
       },
       path: {
-        app_token: copyBaseArgs.app_token,
+        app_token: args.app_token,
       },
-    }, this.withUserAccessToken());
+    }, withUserAccessToken(args.user_access_token));
 
     if (res?.code != 0) {
       throw new Error(`Failed to copy base: ${res?.msg}`);
@@ -171,10 +228,11 @@ export class BaseService implements IBaseService {
 
   async listRecords(args: ListRecordsArgs, sessionId?: string): Promise<BaseRecord[]> {
     const client = this.getClient(sessionId);
-    const options = args.options;
     const params = {
       page_size: 10,
-      ...options,
+      sort: args.sort,
+      filter: args.filter,
+      field_names: args.field_names,
     };
 
     const records = [];
@@ -184,11 +242,11 @@ export class BaseService implements IBaseService {
         path: args,
         // @ts-expect-error sdk fields_name类型有问题，接口是支持string[],但sdk类型是string
         params,
-      }, this.withUserAccessToken())) {
+      }, withUserAccessToken(args.user_access_token))) {
         if (item?.items) {
           records.push(...item.items);
         }
-        if (options?.recordLength && records.length >= options.recordLength) {
+        if (args?.recordLength && records.length >= args.recordLength) {
           break;
         }
       }
@@ -199,7 +257,7 @@ export class BaseService implements IBaseService {
     return records;
   }
 
-  async listTables(listTablesArgs: ListTablesArgs, sessionId?: string) {
+  async listTables(args: ListTablesArgs, sessionId?: string) {
     const client = this.getClient(sessionId);
     const tables = [];
 
@@ -209,13 +267,13 @@ export class BaseService implements IBaseService {
           page_size: 20,
         },
         path: {
-          app_token: listTablesArgs.app_token,
+          app_token: args.app_token,
         },
-      }, this.withUserAccessToken())) {
+      }, withUserAccessToken(args.user_access_token))) {
         if (item?.items) {
           tables.push(...item.items);
         }
-        if (tables.length >= recordLength) {
+        if (args.length && tables.length >= args.length) {
           break;
         }
       }
@@ -234,7 +292,7 @@ export class BaseService implements IBaseService {
     const client = this.getClient(sessionId);
     const { data, code, msg } = await client.bitable.v1.appTable.delete({
       path: args,
-    }, this.withUserAccessToken());
+    }, withUserAccessToken(args.user_access_token));
 
     if (code != 0) {
       throw new Error(`Failed to delete table: ${msg}`);
@@ -243,9 +301,14 @@ export class BaseService implements IBaseService {
     return { success: true };
   }
 
-  async updateTable(updateTableArgs: UpdateTableArgs, sessionId?: string): Promise<{ name?: string }> {
+  async updateTable(args: UpdateTableArgs, sessionId?: string): Promise<{ name?: string }> {
     const client = this.getClient(sessionId);
-    const { data, code, msg } = await client.bitable.v1.appTable.patch(updateTableArgs, this.withUserAccessToken());
+    const { data, code, msg } = await client.bitable.v1.appTable.patch({
+      data: {
+        name: args.name,
+      },
+      path: args.path,
+    }, withUserAccessToken(args.user_access_token));
 
     if (code != 0) {
       throw new Error(`Failed to update table: ${msg}`);
@@ -259,11 +322,11 @@ export class BaseService implements IBaseService {
     const fields = [];
     for await (const item of await client.bitable.v1.appTableField.listWithIterator({
       path: args.path
-    }, this.withUserAccessToken())) {
+    }, withUserAccessToken(args.user_access_token))) {
       if (item?.items) {
         fields.push(...item.items);
       }
-      if (fields.length >= args.length) {
+      if (args.length &&fields.length >= args.length) {
         break;
       }
     }
@@ -275,7 +338,7 @@ export class BaseService implements IBaseService {
 
   async createField(createFieldArgs: CreateFieldArgs, sessionId?: string): Promise<Field | undefined> {
     const client = this.getClient(sessionId);
-    const { data, code, msg } = await client.bitable.v1.appTableField.create(createFieldArgs, this.withUserAccessToken());
+    const { data, code, msg } = await client.bitable.v1.appTableField.create(createFieldArgs, withUserAccessToken(createFieldArgs.user_access_token));
 
     if (code != 0) {
       throw new Error(`Failed to create field: ${msg}`);
@@ -284,11 +347,13 @@ export class BaseService implements IBaseService {
     return data?.field;
   }
 
-  async deleteField(deleteFieldArgs: CommonFieldArgs, sessionId?: string) {
+  async deleteField(args: CommonFieldArgs, sessionId?: string) {
     const client = this.getClient(sessionId);
+    const token = args.user_access_token;
+    Reflect.deleteProperty(args, 'user_access_token');
     const { data, code, msg } = await client.bitable.v1.appTableField.delete({
-      path: deleteFieldArgs,
-    }, this.withUserAccessToken());
+      path: args,
+    }, withUserAccessToken(token));
 
     if (code != 0) {
       throw new Error(`Failed to delete field: ${msg}`);
@@ -297,9 +362,12 @@ export class BaseService implements IBaseService {
     return { success: true };
   }
 
-  async updateField(updateFieldArgs: UpdateFieldArgs, sessionId?: string) {
-    const client = this.getClient(sessionId);
-    const { data, code, msg } = await client.bitable.v1.appTableField.update(updateFieldArgs, this.withUserAccessToken());
+  async updateField(args: UpdateFieldArgs, sessionId?: string) {
+      const client = this.getClient(sessionId);
+    const { data, code, msg } = await client.bitable.v1.appTableField.update({
+      data: args.data,
+      path: args.path,
+    }, withUserAccessToken(args.user_access_token));
 
     if (code != 0) {
       throw new Error(`Failed to update field: ${msg}`);
@@ -310,7 +378,15 @@ export class BaseService implements IBaseService {
 
   async createRecord(args: CreateRecordArgs, sessionId?: string) {
     const client = this.getClient(sessionId);
-    const { data, code, msg } = await client.bitable.v1.appTableRecord.create(args, this.withUserAccessToken());
+    const { data, code, msg } = await client.bitable.v1.appTableRecord.create({
+      data: {
+        fields: args.fields,
+      },
+      path: {
+        app_token: args.app_token,
+        table_id: args.table_id,
+      },
+    }, withUserAccessToken(args.user_access_token));
 
 
     if (code != 0) {
@@ -320,9 +396,14 @@ export class BaseService implements IBaseService {
     return data?.record || { fields: {} };
   }
 
-  async updateRecord(updateRecordArgs: UpdateRecordArgs, sessionId?: string) {
+  async updateRecord(args: UpdateRecordArgs, sessionId?: string) {
     const client = this.getClient(sessionId);
-    const { data, code, msg } = await client.bitable.v1.appTableRecord.update(updateRecordArgs, this.withUserAccessToken());
+    const { data, code, msg } = await client.bitable.v1.appTableRecord.update({
+      data: {
+        fields: args.fields,
+      },
+      path: args.path,
+    }, withUserAccessToken(args.user_access_token));
 
     if (code != 0) {
       throw new Error(`Failed to update record: ${msg}`);
@@ -331,11 +412,13 @@ export class BaseService implements IBaseService {
     return data?.record || { fields: {} };
   }
 
-  async deleteRecord(deleteRecordArgs: RecordArgs, sessionId?: string) {
+  async deleteRecord(args: RecordArgs, sessionId?: string) {
     const client = this.getClient(sessionId);
+    const token = args.user_access_token;
+    Reflect.deleteProperty(args, 'user_access_token');
     const { code, msg, data } = await client.bitable.v1.appTableRecord.delete({
-      path: deleteRecordArgs,
-    }, this.withUserAccessToken());
+      path: args,
+    }, withUserAccessToken(token));
 
     if (code != 0) {
       throw new Error(`Failed to delete record: ${msg}`);
@@ -344,11 +427,13 @@ export class BaseService implements IBaseService {
     return { success: true };
   }
 
-  async getRecord(getRecordArgs: RecordArgs, sessionId?: string): Promise<BaseRecord | null> {
+  async getRecord(args: RecordArgs, sessionId?: string): Promise<BaseRecord | null> {
     const client = this.getClient(sessionId);
+    const token = args.user_access_token;
+    Reflect.deleteProperty(args, 'user_access_token');
     const { data, code, msg } = await client.bitable.v1.appTableRecord.get({
-      path: getRecordArgs,
-    }, this.withUserAccessToken());
+      path: args,
+    }, withUserAccessToken(token));
 
     if (code != 0) {
       throw new Error(`Failed to get record: ${msg}`);
@@ -357,9 +442,14 @@ export class BaseService implements IBaseService {
     return data?.record || null;
   }
 
-  async createBatchRecord(createBatchRecordArgs: CreateBatchRecordArgs, sessionId?: string) {
+  async createBatchRecord(args: CreateBatchRecordArgs, sessionId?: string) {
     const client = this.getClient(sessionId);
-    const { data, code, msg } = await client.bitable.v1.appTableRecord.batchCreate(createBatchRecordArgs, this.withUserAccessToken());
+    const { data, code, msg } = await client.bitable.v1.appTableRecord.batchCreate({
+      data: {
+        records: args.records,
+      },
+      path: args.path,
+    }, withUserAccessToken(args.user_access_token));
 
     if (code != 0) {
       throw new Error(`Failed to create batch record: ${msg}`);
@@ -368,7 +458,7 @@ export class BaseService implements IBaseService {
     return data?.records || [];
   }
 
-  async createTable(createTableArgs: CreateTableArgs, sessionId?: string): Promise<CreateTableResponse> {
+  async createTable(args: CreateTableArgs, sessionId?: string): Promise<CreateTableResponse> {
     const client = this.getClient(sessionId);
     const {
       data: response,
@@ -378,81 +468,16 @@ export class BaseService implements IBaseService {
     = await client.bitable.v1.appTable.create({
       data: {
         // @ts-expect-error sdk此api目前ui_type枚举值类型没对齐开放平台和其他api（少了个email），先忽略
-        table: createTableArgs.table,
+        table: args.table,
       },
       path: {
-        app_token: createTableArgs.app_token,
+        app_token: args.app_token,
       },
-    }, this.withUserAccessToken());
+    }, withUserAccessToken(args.user_access_token));
 
     if (code != 0 || !response?.table_id || !response.field_id_list?.length) {
       throw new Error(`Failed to create table: ${msg}`);
     }
     return response;
   }
-
-  // private async validateAndGetSearchFields(
-  //   baseId: string,
-  //   tableId: string,
-  //   requestedFieldIds?: string[],
-  // ): Promise<string[]> {
-  //   const schema = await this.getBaseSchema(baseId);
-  //   const table = schema.tables.find((t) => t.id === tableId);
-  //   if (!table) {
-  //     throw new Error(`Table ${tableId} not found in base ${baseId}`);
-  //   }
-
-  //   const searchableFieldTypes = [
-  //     'singleLineText',
-  //     'multilineText',
-  //     'richText',
-  //     'email',
-  //     'url',
-  //     'phoneNumber',
-  //   ];
-
-  //   const searchableFields = table.fields
-  //     .filter((field) => searchableFieldTypes.includes(field.type))
-  //     .map((field) => field.id);
-
-  //   if (searchableFields.length === 0) {
-  //     throw new Error('No text fields available to search');
-  //   }
-
-  //   // If specific fields were requested, validate they exist and are text fields
-  //   if (requestedFieldIds && requestedFieldIds.length > 0) {
-  //     // Check if any requested fields were invalid
-  //     const invalidFields = requestedFieldIds.filter((fieldId) => !searchableFields.includes(fieldId));
-  //     if (invalidFields.length > 0) {
-  //       throw new Error(`Invalid fields requested: ${invalidFields.join(', ')}`);
-  //     }
-
-  //     return requestedFieldIds;
-  //   }
-
-  //   return searchableFields;
-  // }
-
-  // async searchRecords(
-  //   baseId: string,
-  //   tableId: string,
-  //   searchTerm: string,
-  //   fieldIds?: string[],
-  //   maxRecords?: number,
-  // ): Promise<BaseRecord[]> {
-  //   // Validate and get search fields
-  //   const searchFields = await this.validateAndGetSearchFields(baseId, tableId, fieldIds);
-
-  //   // Escape the search term to prevent formula injection
-  //   const escapedTerm = searchTerm.replace(/["\\]/g, '\\$&');
-
-  //   // Build OR(FIND("term", field1), FIND("term", field2), ...)
-  //   const filterByFormula = `OR(${
-  //     searchFields
-  //       .map((fieldId) => `FIND("${escapedTerm}", {${fieldId}})`)
-  //       .join(',')
-  //   })`;
-
-  //   return this.listRecords(baseId, tableId, { maxRecords, filterByFormula });
-  // }
 }

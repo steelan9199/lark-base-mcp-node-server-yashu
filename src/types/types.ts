@@ -33,6 +33,11 @@ export const TableSchema = z.object({
   views: z.array(ViewSchema),
 });
 
+export const GetAppTokenArgsSchema = z.object({
+  url: z.string(),
+  user_access_token: z.string(),
+});
+
 export const BaseSchemaResponseSchema = z.object({
   tables: z.array(TableSchema),
 });
@@ -40,6 +45,7 @@ export const BaseSchemaResponseSchema = z.object({
 export const CommonTableArgsSchema = z.object({
   table_id: z.string(),
   app_token: z.string(),
+  user_access_token: z.string(),  
 });
 
 export const CreateTableArgsSchema = z.object({
@@ -50,6 +56,7 @@ export const CreateTableArgsSchema = z.object({
       - The primary (first) field must be one of: single line text, long text, date, phone number, email, URL, number, currency, percent, duration, formula, autonumber, barcode.
       `),
   }),
+  user_access_token: z.string(),
   app_token: z.string(),
 });
 
@@ -79,27 +86,21 @@ export const FieldOptionsSchema = z
   })
   .passthrough();
 
-// ========== Record Related Schemas ==========
-export const ListRecordsOptionsSchema = z.object({
-  fields: z.array(z.string()).optional(),
-  sort: z.array(z.string()).optional(),
-  filter: z.string().optional().describe('Filter records by a condition. Use the field name and operator to specify the condition. For example, AND(CurrentValue.[订单号].contains("004"),CurrentValue.[订单日期]= TODAY())'),
-  recordLength: z.number().optional().default(20),
-});
-
 // ========== API Argument Schemas ==========
 export const ListRecordsArgsSchema = z.object({
   table_id: z.string(),
   app_token: z.string(),
-  options: ListRecordsOptionsSchema
+  user_access_token: z.string(),
+  field_names: z.array(z.string()).optional(),
+  sort: z.array(z.string()).optional(),
+  filter: z.string().optional().describe('eg. AND(CurrentValue.[订单号].contains("004"),CurrentValue.[订单日期]= TODAY())'),
+  recordLength: z.number().optional().default(20),
 });
 
 export const ListTablesArgsSchema = z.object({
   app_token: z.string(),
-});
-
-export const GetAppTokenArgsSchema = z.object({
-  wikiToken: z.string(),
+  user_access_token: z.string(),
+  length: z.number().optional(),
 });
 
 export const GetTableSchemaArgsSchema = z.object({
@@ -114,50 +115,29 @@ export const SearchRecordsArgsSchema = z.object({
   maxRecords: z.number().optional().describe('Maximum number of records to return. Defaults to 100.'),
 });
 
-export const TableDetailLevelSchema = z.enum(['tableIdentifiersOnly', 'identifiersOnly', 'full']).describe(`Detail level for table information:
-- tableIdentifiersOnly: table IDs and names
-- identifiersOnly: table, field, and view IDs and names
-- full: complete details including field types, descriptions, and configurations
-
-Note for LLMs: To optimize context window usage, request the minimum detail level needed:
-- Use 'tableIdentifiersOnly' when you only need to list or reference tables
-- Use 'identifiersOnly' when you need to work with field or view references
-- Only use 'full' when you need field types, descriptions, or other detailed configuration
-
-If you only need detailed information on a few tables in a base with many complex tables, it might be more efficient for you to use list_tables with tableIdentifiersOnly, then describe_table with full on the specific tables you want.`);
-
-export const DescribeTableArgsSchema = z.object({
-  baseId: z.string(),
-  tableId: z.string(),
-  detailLevel: TableDetailLevelSchema.optional().default('full'),
-});
-
 export const RecordArgsSchema = z.object({
   app_token: z.string(),
   table_id: z.string(),
   record_id: z.string(),
+  user_access_token: z.string(),
 });
 
-export const CreateRecordArgsSchema = z.object({
-  path: CommonTableArgsSchema,
-  data: z.object({
-    fields: RecordFieldsSchema,
-  }),
+export const CreateRecordArgsSchema = CommonTableArgsSchema.extend({
+  fields: RecordFieldsSchema,
+  user_access_token: z.string(),
 });
 
 export const CreateBatchRecordArgsSchema = z.object({
   path: CommonTableArgsSchema,
-  data: z.object({
-    records: z.array(z.object({
-      fields: RecordFieldsSchema,
-    })),
-  }),
+  records: z.array(z.object({
+    fields: RecordFieldsSchema,
+  })),
+  user_access_token: z.string(),
 });
 export const UpdateRecordArgsSchema = z.object({
   path: RecordArgsSchema,
-  data: z.object({
-    fields: RecordFieldsSchema,
-  }),
+  fields: RecordFieldsSchema,
+  user_access_token: z.string(),
 });
 
 // export const DeleteRecordsArgsSchema = z.object({
@@ -175,49 +155,56 @@ export const UpdateRecordArgsSchema = z.object({
 // });
 
 export const UpdateTableArgsSchema = z.object({
-  data: z.object({
-    name: z.string(),
-  }),
+  name: z.string(),
   path: CommonTableArgsSchema,
+  user_access_token: z.string(),
 });
 
 export const CreateFieldArgsSchema = z.object({
   path: CommonTableArgsSchema,
   data: FieldSchema,
+  user_access_token: z.string(),
 });
 
 export const CreateBaseArgsSchema = z.object({
-  name: z.string().describe('Name for the new base/table'),
+  user_access_token: z.string().describe('User access token for base tools calling'),
+  name: z.string(),
   folder_token: z.string().optional().describe('Folder token where the base will be created'),
 });
 
 export const UpdateBaseArgsSchema = z.object({
-  app_token: z.string().describe('ID of the base to update'),
-  name: z.string().optional().describe('New name for the base'),
+  app_token: z.string(),
+  name: z.string().optional(),
   folder_token: z.string().optional().describe('New folder token for the base'),
+  user_access_token: z.string(),
 });
 
 export const GetBaseArgsSchema = z.object({
   app_token: z.string().describe('ID of the base to get'),
+  user_access_token: z.string(),
 });
 
 export const CopyBaseArgsSchema = z.object({
-  app_token: z.string().describe('ID of the base to copy'),
-  folder_token: z.string().optional().describe('New folder token for the base'),
+  app_token: z.string(),
+  folder_token: z.string().optional(),
+  user_access_token: z.string(),
 });
 
 export const ListFieldsArgsSchema = z.object({
-  length: z.number().optional().default(100).describe('Maximum number of fields to return. Defaults to 100.'),
+  length: z.number().optional(),
   path: CommonTableArgsSchema,
+  user_access_token: z.string(),
 });
 
 export const CommonFieldArgsSchema = CommonTableArgsSchema.extend({
   field_id: z.string(),
+  user_access_token: z.string(),
 });
 
 export const UpdateFieldArgsSchema = z.object({
   data: FieldSchema,
   path: CommonFieldArgsSchema,
+  user_access_token: z.string(),
 });
 
 // ========== Type Definitions ==========
@@ -226,7 +213,7 @@ export type BaseSchemaResponse = z.infer<typeof BaseSchemaResponseSchema>;
 export type Base = z.infer<typeof BaseSchema>;
 export type Table = z.infer<typeof TableSchema>;
 export type Field = z.infer<typeof FieldSchema>;
-export type ListRecordsOptions = z.infer<typeof ListRecordsOptionsSchema>;
+export type GetAppTokenArgs = z.infer<typeof GetAppTokenArgsSchema>;
 export type ListRecordsArgs = z.infer<typeof ListRecordsArgsSchema>;
 export type ListTablesArgs = z.infer<typeof ListTablesArgsSchema>;
 export type RecordArgs = z.infer<typeof RecordArgsSchema>;
@@ -318,11 +305,13 @@ export interface BaseServiceResponse {
 }
 
 export interface IBaseService {
-  getAuthorization(): Promise<any>;
+  getAuthUrl(sessionId?: string): Promise<any>;
+  getAuthToken(sessionId?: string): Promise<any>;
+  getAppToken(getAppTokenArgs: GetAppTokenArgs, sessionId?: string): Promise<any>;
   createBase(createBaseArgs: CreateBaseArgs, sessionId?: string): Promise<any>;
   updateBase(updateBaseArgs: UpdateBaseArgs, sessionId?: string): Promise<any>;
   copyBase(copyBaseArgs: CopyBaseArgs, sessionId?: string): Promise<any>;
-  getBase(appToken: string, sessionId?: string): Promise<any>;
+  getBase(getBaseArgs: GetBaseArgs, sessionId?: string): Promise<any>;
   listRecords(listRecordsArgs: ListRecordsArgs, sessionId?: string): Promise<BaseRecord[]>;
   listTables(listTablesArgs: ListTablesArgs, sessionId?: string): Promise<{
     tables: ListTablesResponse;

@@ -16,7 +16,7 @@ const main = async () => {
   const app = express();
 
   app.get('/sse', async (req: Request, res: Response) => {
-    // console.log(`[SSE Connection] Client connected`);
+    console.log(`[SSE Connection] Client connected`);
 
     const { appToken, personalBaseToken } = req.query;
 
