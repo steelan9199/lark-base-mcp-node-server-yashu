@@ -35,7 +35,7 @@ export const TableSchema = z.object({
 
 export const GetAppTokenArgsSchema = z.object({
   url: z.string(),
-  user_access_token: z.string(),
+  // user_access_token: z.string(),
 });
 
 export const BaseSchemaResponseSchema = z.object({
@@ -45,7 +45,7 @@ export const BaseSchemaResponseSchema = z.object({
 export const CommonTableArgsSchema = z.object({
   table_id: z.string(),
   app_token: z.string(),
-  user_access_token: z.string(),  
+  // user_access_token: z.string(),  
 });
 
 export const CreateTableArgsSchema = z.object({
@@ -56,7 +56,7 @@ export const CreateTableArgsSchema = z.object({
       - The primary (first) field must be one of: single line text, long text, date, phone number, email, URL, number, currency, percent, duration, formula, autonumber, barcode.
       `),
   }),
-  user_access_token: z.string(),
+  // user_access_token: z.string(),
   app_token: z.string(),
 });
 
@@ -90,7 +90,7 @@ export const FieldOptionsSchema = z
 export const ListRecordsArgsSchema = z.object({
   table_id: z.string(),
   app_token: z.string(),
-  user_access_token: z.string(),
+  // user_access_token: z.string(),
   field_names: z.string().optional().describe('Use name rather than id to specify the fields to return.It needs to be formatted as a JSON array string'),
   sort: z.array(z.string()).optional(),
   filter: z.string().optional().describe('eg. AND(CurrentValue.[订单号].contains("004"),CurrentValue.[订单日期]= TODAY())'),
@@ -99,7 +99,7 @@ export const ListRecordsArgsSchema = z.object({
 
 export const ListTablesArgsSchema = z.object({
   app_token: z.string(),
-  user_access_token: z.string(),
+  // user_access_token: z.string(),
   length: z.number().optional(),
 });
 
@@ -119,12 +119,12 @@ export const RecordArgsSchema = z.object({
   app_token: z.string(),
   table_id: z.string(),
   record_id: z.string(),
-  user_access_token: z.string(),
+  // user_access_token: z.string(),
 });
 
 export const CreateRecordArgsSchema = CommonTableArgsSchema.extend({
   fields: RecordFieldsSchema,
-  user_access_token: z.string(),
+  // user_access_token: z.string(),
 });
 
 export const CreateBatchRecordArgsSchema = z.object({
@@ -132,12 +132,12 @@ export const CreateBatchRecordArgsSchema = z.object({
   records: z.array(z.object({
     fields: RecordFieldsSchema,
   })),
-  user_access_token: z.string(),
+  // user_access_token: z.string(),
 });
 export const UpdateRecordArgsSchema = z.object({
   path: RecordArgsSchema,
   fields: RecordFieldsSchema,
-  user_access_token: z.string(),
+  // user_access_token: z.string(),
 });
 
 // export const DeleteRecordsArgsSchema = z.object({
@@ -157,17 +157,17 @@ export const UpdateRecordArgsSchema = z.object({
 export const UpdateTableArgsSchema = z.object({
   name: z.string(),
   path: CommonTableArgsSchema,
-  user_access_token: z.string(),
+  // user_access_token: z.string(),
 });
 
 export const CreateFieldArgsSchema = z.object({
   path: CommonTableArgsSchema,
   data: FieldSchema,
-  user_access_token: z.string(),
+  // user_access_token: z.string(),
 });
 
 export const CreateBaseArgsSchema = z.object({
-  user_access_token: z.string().describe('User access token for base tools calling'),
+  // user_access_token: z.string().describe('User access token for base tools calling'),
   name: z.string(),
   folder_token: z.string().optional().describe('Folder token where the base will be created'),
 });
@@ -176,35 +176,35 @@ export const UpdateBaseArgsSchema = z.object({
   app_token: z.string(),
   name: z.string().optional(),
   folder_token: z.string().optional().describe('New folder token for the base'),
-  user_access_token: z.string(),
+  // user_access_token: z.string(),
 });
 
 export const GetBaseArgsSchema = z.object({
   app_token: z.string().describe('ID of the base to get'),
-  user_access_token: z.string(),
+  // user_access_token: z.string(),
 });
 
 export const CopyBaseArgsSchema = z.object({
   app_token: z.string(),
   folder_token: z.string().optional(),
-  user_access_token: z.string(),
+  // user_access_token: z.string(),
 });
 
 export const ListFieldsArgsSchema = z.object({
   length: z.number().optional(),
   path: CommonTableArgsSchema,
-  user_access_token: z.string(),
+  // user_access_token: z.string(),
 });
 
 export const CommonFieldArgsSchema = CommonTableArgsSchema.extend({
   field_id: z.string(),
-  user_access_token: z.string(),
+  // user_access_token: z.string(),
 });
 
 export const UpdateFieldArgsSchema = z.object({
   data: FieldSchema,
   path: CommonFieldArgsSchema,
-  user_access_token: z.string(),
+  // user_access_token: z.string(),
 });
 
 // ========== Type Definitions ==========
@@ -305,7 +305,7 @@ export interface BaseServiceResponse {
 }
 
 export interface IBaseService {
-  getAuthUrlOrToken(sessionId?: string): Promise<any>;
+  getAuthorization(sessionId?: string): Promise<any>;
   // getAuthToken(sessionId?: string): Promise<any>;
   getAppToken(getAppTokenArgs: GetAppTokenArgs, sessionId?: string): Promise<any>;
   createBase(createBaseArgs: CreateBaseArgs, sessionId?: string): Promise<any>;
@@ -332,6 +332,7 @@ export interface IBaseService {
 }
 
 export interface IBaseMCPServer {
+  stdioUUID: string;
   connect(transport: Transport): Promise<void>;
 }
 

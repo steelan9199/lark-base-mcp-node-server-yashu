@@ -96,7 +96,7 @@ export class BaseService implements IBaseService {
     return withUserAccessToken('u-jlJhgLaSp6XVQCZqflZatElhgj0M10ypjG20glmyw5V7');
   }
 
-  async getAuthUrlOrToken(sessionId?: string) {
+  async getAuthorization(sessionId?: string) {
     const data = await this._client2?.httpInstance.get(BASE_AUTHORIZE_URL + `?sessionId=${sessionId}`, {
       headers: {
         'x-tt-env': 'boe_mcp_authorize',
@@ -109,7 +109,13 @@ export class BaseService implements IBaseService {
     console.log('getAuthorizationUrl', data.data);
 
     if (data.data.userAccessToken) {
-      return data.data.userAccessToken;
+      if (!sessionId) {
+        throw new Error('Session ID is required');
+      }
+      sessionManager.setUserAccessToken(sessionId, data.data.userAccessToken);
+      return {  
+        success: true,
+      };
     }
     return {
       authUrl: data.data.authenticationUrl
@@ -139,7 +145,7 @@ export class BaseService implements IBaseService {
           params: {
             token: wikiToken,
           },
-        }, withUserAccessToken(args.user_access_token));
+        }, withUserAccessToken(sessionManager.getUserAccessToken(sessionId) || ''));
         
         if (res?.code !== 0) {
           throw new Error(`Failed to get wiki space: ${JSON.stringify(res)}`);
@@ -166,7 +172,7 @@ export class BaseService implements IBaseService {
           folder_token: args.folder_token,
         },
       },
-      withUserAccessToken(args.user_access_token)
+      withUserAccessToken(sessionManager.getUserAccessToken(sessionId) || '')
     );
 
     if (res?.code != 0) {
@@ -186,7 +192,7 @@ export class BaseService implements IBaseService {
           app_token: args.app_token,
         }
       },
-      withUserAccessToken(args.user_access_token),
+      withUserAccessToken(sessionManager.getUserAccessToken(sessionId) || ''),
     );
 
     if (res?.code != 0) {
@@ -201,7 +207,7 @@ export class BaseService implements IBaseService {
       path: {
         app_token: args.app_token,
       },
-    }, withUserAccessToken(args.user_access_token));
+    }, withUserAccessToken(sessionManager.getUserAccessToken(sessionId) || ''));
 
     if (res?.code != 0) {
       throw new Error(`Failed to get Base: ${res?.msg}`);
@@ -218,7 +224,7 @@ export class BaseService implements IBaseService {
       path: {
         app_token: args.app_token,
       },
-    }, withUserAccessToken(args.user_access_token));
+    }, withUserAccessToken(sessionManager.getUserAccessToken(sessionId) || ''));
 
     if (res?.code != 0) {
       throw new Error(`Failed to copy base: ${res?.msg}`);
@@ -242,7 +248,7 @@ export class BaseService implements IBaseService {
         path: args,
         // @ts-expect-error sdk fields_name类型有问题，接口是支持string[],但sdk类型是string
         params,
-      }, withUserAccessToken(args.user_access_token))) {
+      }, withUserAccessToken(sessionManager.getUserAccessToken(sessionId) || ''))) {
         if (item?.items) {
           records.push(...item.items);
         }
@@ -269,7 +275,7 @@ export class BaseService implements IBaseService {
         path: {
           app_token: args.app_token,
         },
-      }, withUserAccessToken(args.user_access_token))) {
+      }, withUserAccessToken(sessionManager.getUserAccessToken(sessionId) || ''))) {
         if (item?.items) {
           tables.push(...item.items);
         }
@@ -292,7 +298,7 @@ export class BaseService implements IBaseService {
     const client = this.getClient(sessionId);
     const { data, code, msg } = await client.bitable.v1.appTable.delete({
       path: args,
-    }, withUserAccessToken(args.user_access_token));
+    }, withUserAccessToken(sessionManager.getUserAccessToken(sessionId) || ''));
 
     if (code != 0) {
       throw new Error(`Failed to delete table: ${msg}`);
@@ -308,7 +314,7 @@ export class BaseService implements IBaseService {
         name: args.name,
       },
       path: args.path,
-    }, withUserAccessToken(args.user_access_token));
+    }, withUserAccessToken(sessionManager.getUserAccessToken(sessionId) || ''));
 
     if (code != 0) {
       throw new Error(`Failed to update table: ${msg}`);
@@ -322,7 +328,7 @@ export class BaseService implements IBaseService {
     const fields = [];
     for await (const item of await client.bitable.v1.appTableField.listWithIterator({
       path: args.path
-    }, withUserAccessToken(args.user_access_token))) {
+    }, withUserAccessToken(sessionManager.getUserAccessToken(sessionId) || ''))) {
       if (item?.items) {
         fields.push(...item.items);
       }
@@ -338,7 +344,7 @@ export class BaseService implements IBaseService {
 
   async createField(createFieldArgs: CreateFieldArgs, sessionId?: string): Promise<Field | undefined> {
     const client = this.getClient(sessionId);
-    const { data, code, msg } = await client.bitable.v1.appTableField.create(createFieldArgs, withUserAccessToken(createFieldArgs.user_access_token));
+    const { data, code, msg } = await client.bitable.v1.appTableField.create(createFieldArgs, withUserAccessToken(sessionManager.getUserAccessToken(sessionId) || ''));
 
     if (code != 0) {
       throw new Error(`Failed to create field: ${msg}`);
@@ -349,11 +355,9 @@ export class BaseService implements IBaseService {
 
   async deleteField(args: CommonFieldArgs, sessionId?: string) {
     const client = this.getClient(sessionId);
-    const token = args.user_access_token;
-    Reflect.deleteProperty(args, 'user_access_token');
     const { data, code, msg } = await client.bitable.v1.appTableField.delete({
       path: args,
-    }, withUserAccessToken(token));
+    }, withUserAccessToken(sessionManager.getUserAccessToken(sessionId) || ''));
 
     if (code != 0) {
       throw new Error(`Failed to delete field: ${msg}`);
@@ -367,7 +371,7 @@ export class BaseService implements IBaseService {
     const { data, code, msg } = await client.bitable.v1.appTableField.update({
       data: args.data,
       path: args.path,
-    }, withUserAccessToken(args.user_access_token));
+    }, withUserAccessToken(sessionManager.getUserAccessToken(sessionId) || ''));
 
     if (code != 0) {
       throw new Error(`Failed to update field: ${msg}`);
@@ -386,7 +390,7 @@ export class BaseService implements IBaseService {
         app_token: args.app_token,
         table_id: args.table_id,
       },
-    }, withUserAccessToken(args.user_access_token));
+    }, withUserAccessToken(sessionManager.getUserAccessToken(sessionId) || ''));
 
 
     if (code != 0) {
@@ -403,7 +407,7 @@ export class BaseService implements IBaseService {
         fields: args.fields,
       },
       path: args.path,
-    }, withUserAccessToken(args.user_access_token));
+    }, withUserAccessToken(sessionManager.getUserAccessToken(sessionId) || ''));
 
     if (code != 0) {
       throw new Error(`Failed to update record: ${msg}`);
@@ -414,11 +418,9 @@ export class BaseService implements IBaseService {
 
   async deleteRecord(args: RecordArgs, sessionId?: string) {
     const client = this.getClient(sessionId);
-    const token = args.user_access_token;
-    Reflect.deleteProperty(args, 'user_access_token');
     const { code, msg, data } = await client.bitable.v1.appTableRecord.delete({
       path: args,
-    }, withUserAccessToken(token));
+    }, withUserAccessToken(sessionManager.getUserAccessToken(sessionId) || ''));
 
     if (code != 0) {
       throw new Error(`Failed to delete record: ${msg}`);
@@ -429,11 +431,9 @@ export class BaseService implements IBaseService {
 
   async getRecord(args: RecordArgs, sessionId?: string): Promise<BaseRecord | null> {
     const client = this.getClient(sessionId);
-    const token = args.user_access_token;
-    Reflect.deleteProperty(args, 'user_access_token');
     const { data, code, msg } = await client.bitable.v1.appTableRecord.get({
       path: args,
-    }, withUserAccessToken(token));
+    }, withUserAccessToken(sessionManager.getUserAccessToken(sessionId) || ''));
 
     if (code != 0) {
       throw new Error(`Failed to get record: ${msg}`);
@@ -449,7 +449,7 @@ export class BaseService implements IBaseService {
         records: args.records,
       },
       path: args.path,
-    }, withUserAccessToken(args.user_access_token));
+    }, withUserAccessToken(sessionManager.getUserAccessToken(sessionId) || ''));
 
     if (code != 0) {
       throw new Error(`Failed to create batch record: ${msg}`);
@@ -473,7 +473,7 @@ export class BaseService implements IBaseService {
       path: {
         app_token: args.app_token,
       },
-    }, withUserAccessToken(args.user_access_token));
+    }, withUserAccessToken(sessionManager.getUserAccessToken(sessionId) || ''));
 
     if (code != 0 || !response?.table_id || !response.field_id_list?.length) {
       throw new Error(`Failed to create table: ${msg}`);

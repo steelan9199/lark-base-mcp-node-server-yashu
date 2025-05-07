@@ -6,7 +6,7 @@ import { BaseMCPServer } from './service/mcpServer.js';
 import { Command } from 'commander';
 import { currentVersion } from './utils/version.js';
 import fs from 'fs';
-
+import { sessionManager } from './service/sessionManager.js';
 const main = async () => {
     const program = new Command();
 
@@ -30,6 +30,7 @@ const main = async () => {
             const baseService = new BaseService(mergedOptions);
             const server = new BaseMCPServer(baseService);
             const transport = new StdioServerTransport();
+            sessionManager.createSession(server.stdioUUID, options.appToken, options.personalBaseToken, transport);
             await server.connect(transport);
         });
 

@@ -1,8 +1,9 @@
 import { Transport } from '@modelcontextprotocol/sdk/shared/transport.js';
 
 interface Session {
-  appToken: string;
-  personalBaseToken: string;
+  appToken?: string;
+  personalBaseToken?: string;
+  userAccessToken?: string;
   transport: Transport | null;
 }
 
@@ -31,6 +32,24 @@ class SessionManager {
 
   deleteSession(sessionId: string): void {
     this.sessions.delete(sessionId);
+  }
+
+  setUserAccessToken(sessionId: string, userAccessToken: string): void {
+    const session = this.sessions.get(sessionId);
+    if (session) {
+      session.userAccessToken = userAccessToken;
+      this.sessions.set(sessionId, session);
+    } else {
+      throw new Error(`Session not found: ${sessionId}`);
+    }
+  }
+
+  getUserAccessToken(sessionId?: string): string | undefined {
+    if (!sessionId) {
+      return undefined;
+    }
+    const session = this.sessions.get(sessionId);
+    return session?.userAccessToken;
   }
 }
 

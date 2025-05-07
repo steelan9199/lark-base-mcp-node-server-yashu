@@ -84,9 +84,8 @@ export class BaseMCPServer implements IBaseMCPServer {
 
   private baseService: IBaseService;
 
-  private stdioUUID: string;
+  stdioUUID: string;
 
-  private readonly SCHEMA_PATH = 'schema';
 
   constructor(baseService: IBaseService) {
     this.baseService = baseService;
@@ -155,7 +154,7 @@ export class BaseMCPServer implements IBaseMCPServer {
     return {
       tools: [
         {
-          name: 'get_authorization_url_or_token',
+          name: 'get_authorization',
           description:
             'Get authorization to generate user_access_token. If this tool returns a url, generate a hyperlink to guide the user to visit the URL and authorize and then use this tool again to get token. If this tool returns a user_access_token, just return it and don`t generate a hyperlink.',
           inputSchema: getInputSchema(z.object({})),
@@ -280,8 +279,8 @@ export class BaseMCPServer implements IBaseMCPServer {
       }
 
       switch (request.params.name) {
-        case 'get_authorization_url_or_token': {
-          const base = await this.baseService.getAuthUrlOrToken(sessionId);
+        case 'get_authorization': {
+          const base = await this.baseService.getAuthorization(sessionId);
           return formatToolResponse(base);
         }
         // case 'get_authorization_token': {
