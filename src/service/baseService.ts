@@ -61,11 +61,11 @@ export class BaseService implements IBaseService {
     this._client = this._client2;
 
     if (this.serviceType === 'stdio' && options) {
-      this._personalBaseToken = options.personalBaseToken || process.env.PERSONAL_BASE_TOKEN;
-      this._appToken = options.appToken || process.env.APP_TOKEN;
-      if (!this._personalBaseToken || !this._appToken) {
-        throw new Error('personalBaseToken and appToken must be set');
-      }
+      // this._personalBaseToken = options.personalBaseToken || process.env.PERSONAL_BASE_TOKEN;
+      // this._appToken = options.appToken || process.env.APP_TOKEN;
+      // if (!this._personalBaseToken || !this._appToken) {
+      //   throw new Error('personalBaseToken and appToken must be set');
+      // }
       // this._client = new BaseClient({
       //   appToken: this._appToken,
       //   personalBaseToken: this._personalBaseToken,
@@ -96,7 +96,7 @@ export class BaseService implements IBaseService {
     return withUserAccessToken('u-jlJhgLaSp6XVQCZqflZatElhgj0M10ypjG20glmyw5V7');
   }
 
-  async getAuthUrl(sessionId?: string) {
+  async getAuthUrlOrToken(sessionId?: string) {
     const data = await this._client2?.httpInstance.get(BASE_AUTHORIZE_URL + `?sessionId=${sessionId}`, {
       headers: {
         'x-tt-env': 'boe_mcp_authorize',

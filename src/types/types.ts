@@ -305,8 +305,8 @@ export interface BaseServiceResponse {
 }
 
 export interface IBaseService {
-  getAuthUrl(sessionId?: string): Promise<any>;
-  getAuthToken(sessionId?: string): Promise<any>;
+  getAuthUrlOrToken(sessionId?: string): Promise<any>;
+  // getAuthToken(sessionId?: string): Promise<any>;
   getAppToken(getAppTokenArgs: GetAppTokenArgs, sessionId?: string): Promise<any>;
   createBase(createBaseArgs: CreateBaseArgs, sessionId?: string): Promise<any>;
   updateBase(updateBaseArgs: UpdateBaseArgs, sessionId?: string): Promise<any>;

@@ -90,8 +90,8 @@ export class BaseMCPServer implements IBaseMCPServer {
 
   constructor(baseService: IBaseService) {
     this.baseService = baseService;
-    // this.stdioUUID = uuid();
-    this.stdioUUID = '123';
+    this.stdioUUID = uuid();
+    // this.stdioUUID = '123';
     this.server = new Server(
       {
         name: 'base-mcp-server',
@@ -155,16 +155,16 @@ export class BaseMCPServer implements IBaseMCPServer {
     return {
       tools: [
         {
-          name: 'get_authorization_url',
+          name: 'get_authorization_url_or_token',
           description:
-            'Get authorization URL to generate user_access_token. If this tool returns the userAccessToken, skip the get_authorization_token tool, else generate a hyperlink to guide the user to visit the URL and authorize.',
+            'Get authorization to generate user_access_token. If this tool returns a url, generate a hyperlink to guide the user to visit the URL and authorize and then use this tool again to get token. If this tool returns a user_access_token, just return it and don`t generate a hyperlink.',
           inputSchema: getInputSchema(z.object({})),
         },
-        {
-          name: 'get_authorization_token',
-          description: 'Get user_access_token for base tools calling. If the user has already acquired the token, skip this step.',
-          inputSchema: getInputSchema(z.object({})),
-        },
+        // {
+        //   name: 'get_authorization_token',
+        //   description: 'Get user_access_token for base tools calling. If the user has already acquired the token, skip this step.',
+        //   inputSchema: getInputSchema(z.object({})),
+        // },
         {
           name: 'get_app_token',
           description: 'Get app_token from a url if the user wants to operate with base',
@@ -280,14 +280,14 @@ export class BaseMCPServer implements IBaseMCPServer {
       }
 
       switch (request.params.name) {
-        case 'get_authorization_url': {
-          const base = await this.baseService.getAuthUrl(sessionId);
+        case 'get_authorization_url_or_token': {
+          const base = await this.baseService.getAuthUrlOrToken(sessionId);
           return formatToolResponse(base);
         }
-        case 'get_authorization_token': {
-          const base = await this.baseService.getAuthToken(sessionId);
-          return formatToolResponse(base);
-        }
+        // case 'get_authorization_token': {
+        //   const base = await this.baseService.getAuthToken(sessionId);
+        //   return formatToolResponse(base);
+        // }
         case 'get_app_token': {
           const args = GetAppTokenArgsSchema.parse(request.params.arguments);
           const base = await this.baseService.getAppToken(args, sessionId);
