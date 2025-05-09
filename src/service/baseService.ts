@@ -26,11 +26,14 @@ import {
   UpdateRecordArgs,
   RecordArgs,
   CreateBatchRecordArgs,
-  GetAppTokenArgs
+  GetAppTokenArgs,
+  AuthResponse
 } from '../types/types.js';
 import { FieldType } from '../types/enums.js';
 import { sessionManager } from './sessionManager.js';
 import { Client, withUserAccessToken } from '@larksuiteoapi/node-sdk';
+import { formatErrors } from '../utils/utils.js';
+
 
 const maxRecordLength = 100;
 
@@ -48,109 +51,56 @@ export class BaseService implements IBaseService {
   serviceType: 'sse' | 'stdio' = 'sse';
   _personalBaseToken: string | undefined;
   _appToken: string | undefined;
-  _client: Client | undefined;
-  _client2: Client | undefined;
+  _client: Client;
   constructor(options?: { transport: 'sse' | 'stdio'; personalBaseToken: string; appToken: string }) {
     this.serviceType = options?.transport || 'sse';
-    this._client2 = new Client({
+    this._client = new Client({
       appId: '',
       appSecret: '',
       disableTokenCache: true,
       domain: isDev ? 'https://open.feishu-boe.cn' : '',
     });
-    this._client = this._client2;
-
-    if (this.serviceType === 'stdio' && options) {
-      // this._personalBaseToken = options.personalBaseToken || process.env.PERSONAL_BASE_TOKEN;
-      // this._appToken = options.appToken || process.env.APP_TOKEN;
-      // if (!this._personalBaseToken || !this._appToken) {
-      //   throw new Error('personalBaseToken and appToken must be set');
-      // }
-      // this._client = new BaseClient({
-      //   appToken: this._appToken,
-      //   personalBaseToken: this._personalBaseToken,
-      // });
-    }
   }
 
   private getClient(sessionId?: string): Client {
     // logToFile('getClient', !!this._client, this.serviceType);
     return this._client!;
-    if (this._client) {
-      return this._client!;
-    }
-
-    // // sse 模式下，每次调用tools都创建一个client
-    // const session = sessionManager.getSession(sessionId || '');
-    // if (!session) {
-    //   throw new Error('Session not found');
-    // }
-
-    // return new BaseClient({
-    //   appToken: session.appToken,
-    //   personalBaseToken: session.personalBaseToken,
-    // });
-  }
-
-  private withUserAccessToken() {
-    return withUserAccessToken('u-jlJhgLaSp6XVQCZqflZatElhgj0M10ypjG20glmyw5V7');
   }
 
   async getAuthorization(sessionId?: string) {
-    const data = await this._client2?.httpInstance.get(BASE_AUTHORIZE_URL + `?sessionId=${sessionId}`, {
-      headers: {
-        'x-tt-env': 'boe_mcp_authorize',
-      },
-    });
-    if (data?.code != 0 || (!data?.data?.authenticationUrl && !data?.data?.userAccessToken)) {
-      throw new Error(`Failed to get authorization: ${JSON.stringify(data)}`);
-    }
+    const { token, authUrl, message } = await this.getTokenOrAuthUrl(sessionId);
 
-    console.log('getAuthorizationUrl', data.data);
-
-    if (data.data.userAccessToken) {
-      if (!sessionId) {
-        throw new Error('Session ID is required');
-      }
-      sessionManager.setUserAccessToken(sessionId, data.data.userAccessToken);
-      return {  
+    // token 不对外暴露
+    if (token) {
+      return {
         success: true,
       };
     }
     return {
-      authUrl: data.data.authenticationUrl
+      authUrl,
+      message,
     };
   }
 
-  async getAuthToken(sessionId?: string) {
-    const data = await this._client2?.httpInstance.get(BASE_AUTHORIZE_URL + `?sessionId=${sessionId}`, {
-      headers: {
-        'x-tt-env': 'boe_mcp_authorize',
-      },
-    });
-
-    if (data?.code != 0 || !data?.data?.userAccessToken) {
-      throw new Error(`Failed to get authorization token: ${JSON.stringify(data)}`);
+  async getAppToken(args: GetAppTokenArgs, sessionId?: string): Promise<string | AuthResponse> {
+    const { token, authUrl, message } = await this.getTokenOrAuthUrl(sessionId);
+    if (authUrl) {
+      return { authUrl, message };
     }
-    console.log('getAuthorizationToken', data.data);
-    return data?.data?.userAccessToken;
-  }
-
-  async getAppToken(args: GetAppTokenArgs, sessionId?: string) {
     const url = new URL(args.url);
     if (url.pathname.startsWith('/wiki/')) {
       const wikiToken = url.pathname.split('/wiki/')[1];
       if (wikiToken) {
-        const res = await this._client2?.wiki.v2.space.getNode({
+        const res = await this._client.wiki.v2.space.getNode({
           params: {
             token: wikiToken,
           },
-        }, withUserAccessToken(sessionManager.getUserAccessToken(sessionId) || ''));
+        }, withUserAccessToken(token || ''));
         
         if (res?.code !== 0) {
           throw new Error(`Failed to get wiki space: ${JSON.stringify(res)}`);
         }
-        return res.data?.node?.node_token;
+        return res.data?.node?.node_token || '';
       }
       throw new Error('Invalid wiki url');
     } else if (url.pathname.startsWith('/base/')) {
@@ -163,27 +113,59 @@ export class BaseService implements IBaseService {
     throw new Error('URL not supported');
   }
 
+  private async getTokenOrAuthUrl(sessionId?: string) {
+    let token = sessionManager.getUserAccessToken(sessionId) || '';
+    if (!token) {
+      const res = await this._client?.httpInstance.get(BASE_AUTHORIZE_URL + `?sessionId=${sessionId}`, {
+        headers: {
+          'x-tt-env': 'boe_mcp_authorize',
+        },
+      });
+  
+      if (res.data.userAccessToken) {
+        token = res.data.userAccessToken;
+      } else if (res.data.authenticationUrl) {
+        return {
+          authUrl: res.data.authenticationUrl,
+          message: '引导用户先访问链接进行时授权，用户授权完成后尝试再次调用本工具',
+        };
+      } else {
+        throw new Error(`Failed to get authorization: ${JSON.stringify(res)}`);
+      }
+    }
+    if (token && sessionId) {
+      sessionManager.setUserAccessToken(sessionId, token);
+    }
+    return { token };
+  }
+
   async createBase(args: CreateBaseArgs, sessionId?: string) {
-    const client = this.getClient(sessionId);
-    const res = await this._client2?.bitable.v1.app.create(
+    const { token, authUrl, message } = await this.getTokenOrAuthUrl(sessionId);
+    if (authUrl) {
+      return { authUrl, message };
+    }
+    const res = await this._client.bitable.v1.app.create(
       {
         data: {
           name: args.name,
           folder_token: args.folder_token,
         },
       },
-      withUserAccessToken(sessionManager.getUserAccessToken(sessionId) || '')
+      withUserAccessToken(token || '')
     );
 
     if (res?.code != 0) {
       throw new Error(`Failed to create base: ${JSON.stringify(res)}`);
     }
-    return res.data?.app;
+    return res.data?.app!;
   }
 
   async updateBase(args: UpdateBaseArgs, sessionId?: string) {
-    const client = this.getClient(sessionId);
-    const res = await this._client2?.bitable.v1.app.update(
+    const { token, authUrl, message } = await this.getTokenOrAuthUrl(sessionId);
+    if (authUrl) {
+      return { authUrl, message };
+    }
+    const res = await this._client.bitable.v1.app.update(
       {
         data: {
           name: args.name
@@ -192,48 +174,59 @@ export class BaseService implements IBaseService {
           app_token: args.app_token,
         }
       },
-      withUserAccessToken(sessionManager.getUserAccessToken(sessionId) || ''),
+      withUserAccessToken(token || ''),
     );
 
     if (res?.code != 0) {
       throw new Error(`Failed to update base: ${res?.msg}`);
     }
-    return res.data?.app;
+    return res.data?.app!;
   }
 
   async getBase(args: GetBaseArgs, sessionId?: string) {
-    const client = this.getClient(sessionId);
-    const res = await this._client2?.bitable.v1.app.get({
+    const { token, authUrl, message } = await this.getTokenOrAuthUrl(sessionId);
+    if (authUrl) {
+      return { authUrl, message };
+    }
+    const res = await this._client.bitable.v1.app.get({
       path: {
         app_token: args.app_token,
       },
-    }, withUserAccessToken(sessionManager.getUserAccessToken(sessionId) || ''));
+    }, withUserAccessToken(token || ''));
 
     if (res?.code != 0) {
       throw new Error(`Failed to get Base: ${res?.msg}`);
     }
-    return res.data?.app;
+    return res.data?.app!;
   }
 
   async copyBase(args: CopyBaseArgs, sessionId?: string) {
-    const client = this.getClient(sessionId);
-    const res = await this._client2?.bitable.v1.app.copy({
+    const { token, authUrl, message } = await this.getTokenOrAuthUrl(sessionId);
+    if (authUrl) {
+      return { authUrl, message };
+    }
+    const res = await this._client.bitable.v1.app.copy({
       data: {
         folder_token: args.folder_token,
       },
       path: {
         app_token: args.app_token,
       },
-    }, withUserAccessToken(sessionManager.getUserAccessToken(sessionId) || ''));
+    }, withUserAccessToken(token || ''));
 
     if (res?.code != 0) {
       throw new Error(`Failed to copy base: ${res?.msg}`);
     }
-    return res.data?.app;
+    return {
+      base: res.data?.app,
+    };
   }
 
-  async listRecords(args: ListRecordsArgs, sessionId?: string): Promise<BaseRecord[]> {
-    const client = this.getClient(sessionId);
+  async listRecords(args: ListRecordsArgs, sessionId?: string) {
+    const { token, authUrl, message } = await this.getTokenOrAuthUrl(sessionId);
+    if (authUrl) {
+      return { authUrl, message };
+    }
     const params = {
       page_size: 10,
       sort: args.sort,
@@ -244,11 +237,11 @@ export class BaseService implements IBaseService {
     const records = [];
 
     try {
-      for await (const item of await client.bitable.v1.appTableRecord.listWithIterator({
+      for await (const item of await this._client.bitable.v1.appTableRecord.listWithIterator({
         path: args,
         // @ts-expect-error sdk fields_name类型有问题，接口是支持string[],但sdk类型是string
         params,
-      }, withUserAccessToken(sessionManager.getUserAccessToken(sessionId) || ''))) {
+      }, withUserAccessToken(token || ''))) {
         if (item?.items) {
           records.push(...item.items);
         }
@@ -260,15 +253,20 @@ export class BaseService implements IBaseService {
       throw new Error(`Failed to list records: ${error}`);
     }
 
-    return records;
+    return {
+      records,
+    };
   }
 
   async listTables(args: ListTablesArgs, sessionId?: string) {
-    const client = this.getClient(sessionId);
+    const { token, authUrl, message } = await this.getTokenOrAuthUrl(sessionId);
+    if (authUrl) {
+      return { authUrl, message };
+    }
     const tables = [];
 
     try {
-      for await (const item of await client.bitable.v1.appTable.listWithIterator({
+      for await (const item of await this._client.bitable.v1.appTable.listWithIterator({
         params: {
           page_size: 20,
         },
@@ -286,19 +284,18 @@ export class BaseService implements IBaseService {
     } catch (error) {
       throw new Error(`Failed to list tables: ${error}`);
     }
-    const session = sessionManager.getSession(sessionId || '');
 
-    return {
-      tables,
-      baseToken: this._appToken || session?.appToken || 'undefined',
-    };
+    return tables;
   }
 
   async deleteTable(args: CommonTableArgs, sessionId?: string) {
-    const client = this.getClient(sessionId);
-    const { data, code, msg } = await client.bitable.v1.appTable.delete({
+    const { token, authUrl, message } = await this.getTokenOrAuthUrl(sessionId);
+    if (authUrl) {
+      return { authUrl, message };
+    }
+    const { data, code, msg } = await this._client.bitable.v1.appTable.delete({
       path: args,
-    }, withUserAccessToken(sessionManager.getUserAccessToken(sessionId) || ''));
+    }, withUserAccessToken(token || ''));
 
     if (code != 0) {
       throw new Error(`Failed to delete table: ${msg}`);
@@ -307,14 +304,17 @@ export class BaseService implements IBaseService {
     return { success: true };
   }
 
-  async updateTable(args: UpdateTableArgs, sessionId?: string): Promise<{ name?: string }> {
-    const client = this.getClient(sessionId);
-    const { data, code, msg } = await client.bitable.v1.appTable.patch({
+  async updateTable(args: UpdateTableArgs, sessionId?: string) {
+    const { token, authUrl, message } = await this.getTokenOrAuthUrl(sessionId);
+    if (authUrl) {
+      return { authUrl, message };
+    }
+    const { data, code, msg } = await this._client.bitable.v1.appTable.patch({
       data: {
         name: args.name,
       },
       path: args.path,
-    }, withUserAccessToken(sessionManager.getUserAccessToken(sessionId) || ''));
+    }, withUserAccessToken(token || ''));
 
     if (code != 0) {
       throw new Error(`Failed to update table: ${msg}`);
@@ -323,12 +323,15 @@ export class BaseService implements IBaseService {
     return data?.name ? { name: data?.name } : {};
   }
 
-  async listFields(args: ListFieldsArgs, sessionId?: string): Promise<Field[]> {
-    const client = this.getClient(sessionId);
+  async listFields(args: ListFieldsArgs, sessionId?: string) {
+    const { token, authUrl, message } = await this.getTokenOrAuthUrl(sessionId);
+    if (authUrl) {
+      return { authUrl, message };
+    }
     const fields = [];
-    for await (const item of await client.bitable.v1.appTableField.listWithIterator({
+    for await (const item of await this._client.bitable.v1.appTableField.listWithIterator({
       path: args.path
-    }, withUserAccessToken(sessionManager.getUserAccessToken(sessionId) || ''))) {
+    }, withUserAccessToken(token || ''))) {
       if (item?.items) {
         fields.push(...item.items);
       }
@@ -342,22 +345,31 @@ export class BaseService implements IBaseService {
     }));
   }
 
-  async createField(createFieldArgs: CreateFieldArgs, sessionId?: string): Promise<Field | undefined> {
-    const client = this.getClient(sessionId);
-    const { data, code, msg } = await client.bitable.v1.appTableField.create(createFieldArgs, withUserAccessToken(sessionManager.getUserAccessToken(sessionId) || ''));
+  async createField(createFieldArgs: CreateFieldArgs, sessionId?: string) {
+    const { token, authUrl, message } = await this.getTokenOrAuthUrl(sessionId);
+    if (authUrl) {
+      return { authUrl, message };
+    }
+    const { data, code, msg } = await this._client.bitable.v1.appTableField.create({
+      data: createFieldArgs.data.field,
+      path: createFieldArgs.path,
+    }, withUserAccessToken(sessionManager.getUserAccessToken(sessionId) || ''));
 
     if (code != 0) {
       throw new Error(`Failed to create field: ${msg}`);
     }
 
-    return data?.field;
+    return data?.field!;
   }
 
   async deleteField(args: CommonFieldArgs, sessionId?: string) {
-    const client = this.getClient(sessionId);
-    const { data, code, msg } = await client.bitable.v1.appTableField.delete({
+    const { token, authUrl, message } = await this.getTokenOrAuthUrl(sessionId);
+    if (authUrl) {
+      return { authUrl, message };
+    }
+    const { data, code, msg } = await this._client.bitable.v1.appTableField.delete({
       path: args,
-    }, withUserAccessToken(sessionManager.getUserAccessToken(sessionId) || ''));
+    }, withUserAccessToken(token || ''));
 
     if (code != 0) {
       throw new Error(`Failed to delete field: ${msg}`);
@@ -367,22 +379,28 @@ export class BaseService implements IBaseService {
   }
 
   async updateField(args: UpdateFieldArgs, sessionId?: string) {
-      const client = this.getClient(sessionId);
-    const { data, code, msg } = await client.bitable.v1.appTableField.update({
-      data: args.data,
+    const { token, authUrl, message } = await this.getTokenOrAuthUrl(sessionId);
+    if (authUrl) {
+      return { authUrl, message };
+    }
+    const { data, code, msg } = await this._client.bitable.v1.appTableField.update({
+      data: args.data.field,
       path: args.path,
-    }, withUserAccessToken(sessionManager.getUserAccessToken(sessionId) || ''));
+    }, withUserAccessToken(token || ''));
 
     if (code != 0) {
       throw new Error(`Failed to update field: ${msg}`);
     }
 
-    return data?.field;
+    return data?.field!;
   }
 
   async createRecord(args: CreateRecordArgs, sessionId?: string) {
-    const client = this.getClient(sessionId);
-    const { data, code, msg } = await client.bitable.v1.appTableRecord.create({
+    const { token, authUrl, message } = await this.getTokenOrAuthUrl(sessionId);
+    if (authUrl) {
+      return { authUrl, message };
+    }
+    const data = await this._client.bitable.v1.appTableRecord.create({
       data: {
         fields: args.fields,
       },
@@ -390,24 +408,27 @@ export class BaseService implements IBaseService {
         app_token: args.app_token,
         table_id: args.table_id,
       },
-    }, withUserAccessToken(sessionManager.getUserAccessToken(sessionId) || ''));
+    }, withUserAccessToken(token || ''));
 
 
-    if (code != 0) {
-      throw new Error(`Failed to create record: ${msg}`);
+    if (data.code != 0) {
+      throw new Error(`Failed to create record: ${data}`);
     }
 
-    return data?.record || { fields: {} };
+    return data?.data?.record || { fields: {} };
   }
 
   async updateRecord(args: UpdateRecordArgs, sessionId?: string) {
-    const client = this.getClient(sessionId);
-    const { data, code, msg } = await client.bitable.v1.appTableRecord.update({
+    const { token, authUrl, message } = await this.getTokenOrAuthUrl(sessionId);
+    if (authUrl) {
+      return { authUrl, message };
+    }
+    const { data, code, msg } = await this._client.bitable.v1.appTableRecord.update({
       data: {
         fields: args.fields,
       },
       path: args.path,
-    }, withUserAccessToken(sessionManager.getUserAccessToken(sessionId) || ''));
+    }, withUserAccessToken(token || ''));
 
     if (code != 0) {
       throw new Error(`Failed to update record: ${msg}`);
@@ -417,10 +438,13 @@ export class BaseService implements IBaseService {
   }
 
   async deleteRecord(args: RecordArgs, sessionId?: string) {
-    const client = this.getClient(sessionId);
-    const { code, msg, data } = await client.bitable.v1.appTableRecord.delete({
+    const { token, authUrl, message } = await this.getTokenOrAuthUrl(sessionId);
+    if (authUrl) {
+      return { authUrl, message };
+    }
+    const { code, msg, data } = await this._client.bitable.v1.appTableRecord.delete({
       path: args,
-    }, withUserAccessToken(sessionManager.getUserAccessToken(sessionId) || ''));
+    }, withUserAccessToken(token || ''));
 
     if (code != 0) {
       throw new Error(`Failed to delete record: ${msg}`);
@@ -429,22 +453,28 @@ export class BaseService implements IBaseService {
     return { success: true };
   }
 
-  async getRecord(args: RecordArgs, sessionId?: string): Promise<BaseRecord | null> {
-    const client = this.getClient(sessionId);
-    const { data, code, msg } = await client.bitable.v1.appTableRecord.get({
+  async getRecord(args: RecordArgs, sessionId?: string) {
+    const { token, authUrl, message } = await this.getTokenOrAuthUrl(sessionId);
+    if (authUrl) {
+      return { authUrl, message };
+    }
+    const { data, code, msg } = await this._client.bitable.v1.appTableRecord.get({
       path: args,
-    }, withUserAccessToken(sessionManager.getUserAccessToken(sessionId) || ''));
+    }, withUserAccessToken(token || ''));
 
     if (code != 0) {
       throw new Error(`Failed to get record: ${msg}`);
     }
 
-    return data?.record || null;
+    return data?.record!;
   }
 
   async createBatchRecord(args: CreateBatchRecordArgs, sessionId?: string) {
-    const client = this.getClient(sessionId);
-    const { data, code, msg } = await client.bitable.v1.appTableRecord.batchCreate({
+    const { token, authUrl, message } = await this.getTokenOrAuthUrl(sessionId);
+    if (authUrl) {
+      return { authUrl, message };
+    }
+    const { data, code, msg } = await this._client.bitable.v1.appTableRecord.batchCreate({
       data: {
         records: args.records,
       },
@@ -458,14 +488,12 @@ export class BaseService implements IBaseService {
     return data?.records || [];
   }
 
-  async createTable(args: CreateTableArgs, sessionId?: string): Promise<CreateTableResponse> {
-    const client = this.getClient(sessionId);
-    const {
-      data: response,
-      code,
-      msg,
-    } 
-    = await client.bitable.v1.appTable.create({
+  async createTable(args: CreateTableArgs, sessionId?: string) {
+    const { token, authUrl, message } = await this.getTokenOrAuthUrl(sessionId);
+    if (authUrl) {
+      return { authUrl, message };
+    }
+    const data = await this._client.bitable.v1.appTable.create({
       data: {
         // @ts-expect-error sdk此api目前ui_type枚举值类型没对齐开放平台和其他api（少了个email），先忽略
         table: args.table,
@@ -473,11 +501,11 @@ export class BaseService implements IBaseService {
       path: {
         app_token: args.app_token,
       },
-    }, withUserAccessToken(sessionManager.getUserAccessToken(sessionId) || ''));
+    }, withUserAccessToken(token || ''));
 
-    if (code != 0 || !response?.table_id || !response.field_id_list?.length) {
-      throw new Error(`Failed to create table: ${msg}`);
+    if (data.code != 0 || !data.data?.table_id || !data.data.field_id_list?.length) {
+      throw new Error(`Failed to create table: ${data}`);
     }
-    return response;
+    return data.data!;
   }
 }

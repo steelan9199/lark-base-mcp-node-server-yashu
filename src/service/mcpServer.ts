@@ -19,7 +19,6 @@ import {
   UpdateRecordArgsSchema,
   CreateTableArgsSchema,
   UpdateTableArgsSchema,
-  SearchRecordsArgsSchema,
   GetAppTokenArgs,
   IBaseService,
   IBaseMCPServer,
@@ -52,21 +51,6 @@ const getInputSchema = (schema: z.ZodType<object>): ListToolsResult['tools'][0][
 };
 
 const formatToolResponse = (data: unknown, isError = false): CallToolResult => {
-  // console.log('>>>formatToolResponse', data, isError);
-
-  if (typeof data === 'object' && data !== null && 'useMarkdown' in data && 'content' in data) {
-    return {
-      content: [
-        {
-          type: 'text',
-          mimeType: 'text/x-markdown',
-          text: JSON.stringify(data.content),
-        },
-      ],
-      isError,
-    };
-  }
-
   return {
     content: [
       {
@@ -85,7 +69,6 @@ export class BaseMCPServer implements IBaseMCPServer {
   private baseService: IBaseService;
 
   stdioUUID: string;
-
 
   constructor(baseService: IBaseService) {
     this.baseService = baseService;
@@ -156,7 +139,7 @@ export class BaseMCPServer implements IBaseMCPServer {
         {
           name: 'get_authorization',
           description:
-            'Get authorization to generate user_access_token. If this tool returns a url, generate a hyperlink to guide the user to visit the URL and authorize and then use this tool again to get token. If this tool returns a user_access_token, just return it and don`t generate a hyperlink.',
+            'Get authorization to generate user_access_token which is necessary for base tools calling. If this tool returns a url, use markdown to show this url as a hyperlink and guide the user to visit the URL and authorize and then use this tool again to get token. If this tool returns a user_access_token, just return the response and don"t generate a hyperlink.',
           inputSchema: getInputSchema(z.object({})),
         },
         // {
@@ -169,44 +152,45 @@ export class BaseMCPServer implements IBaseMCPServer {
           description: 'Get app_token from a url if the user wants to operate with base',
           inputSchema: getInputSchema(GetAppTokenArgsSchema),
         },
-        {
-          name: 'list_records',
-          description: 'List records from a table',
-          inputSchema: getInputSchema(ListRecordsArgsSchema),
-        },
-        {
-          name: 'list_tables',
-          description: 'List tables from a app',
-          inputSchema: getInputSchema(ListTablesArgsSchema),
-        },
+        // {
+        //   name: 'list_records',
+        //   description: 'List records from a table',
+        //   inputSchema: getInputSchema(ListRecordsArgsSchema),
+        // },
+        // {
+        //   name: 'list_tables',
+        //   description: 'List tables from a app',
+        //   inputSchema: getInputSchema(ListTablesArgsSchema),
+        // },
         {
           name: 'create_base',
-          description: 'Create a new base in a app',
+          description: '',
           inputSchema: getInputSchema(CreateBaseArgsSchema),
         },
-        {
-          name: 'update_base',
-          description: 'Update an existing base in a app',
-          inputSchema: getInputSchema(UpdateBaseArgsSchema),
-        },
-        {
-          name: 'get_base',
-          description: 'Get information about a specific base',
-          inputSchema: getInputSchema(GetBaseArgsSchema),
-        },
-        {
-          name: 'copy_base',
-          description: 'Copy a base to another app',
-          inputSchema: getInputSchema(CopyBaseArgsSchema),
-        },
+        // {
+        //   name: 'update_base',
+        //   description: '更新一个base app（多维表格），如果返回了url，用markdown格式显示这个url，并引导用户访问这个url',
+        //   inputSchema: getInputSchema(UpdateBaseArgsSchema),
+        // },
+        // {
+        //   name: 'get_base',
+        //   description: '获取一个base app（多维表格）的信息，如果返回了url，用markdown格式显示这个url，并引导用户访问这个url',
+        //   inputSchema: getInputSchema(GetBaseArgsSchema),
+        // },
+        // {
+        //   name: 'copy_base',
+        //   description: '复制一个base app（多维表格）到另一个app，如果返回了url，用markdown格式显示这个url，并引导用户访问这个url',
+        //   inputSchema: getInputSchema(CopyBaseArgsSchema),
+        // },
         {
           name: 'create_table',
-          description: 'Create a new table in a app',
+          description:
+            '在一个base app（多维表格） 中创建表单。需要事先获取app token。让用户直接提供app token或者一个base的url，如果没有，用creat_base创建一个app获取app token， 不要伪造app token',
           inputSchema: getInputSchema(CreateTableArgsSchema),
         },
         {
           name: 'update_table',
-          description: 'Update a table in a app',
+          description: '更新一个base app（多维表格）中的表单，如果返回了url，用markdown格式显示这个url，并引导用户访问这个url',
           inputSchema: getInputSchema(UpdateTableArgsSchema),
         },
         // {
@@ -214,29 +198,33 @@ export class BaseMCPServer implements IBaseMCPServer {
         //   description: 'Delete a table in a app',
         //   inputSchema: getInputSchema(CommonTableArgsSchema),
         // },
-        // {
-        //   name: 'list_fields',
-        //   description: 'List all fields in a table',
-        //   inputSchema: getInputSchema(ListFieldsArgsSchema),
-        // },
+        {
+          name: 'list_fields',
+          description:
+            'Get field information for a form in a base app (多维表格). If a URL is returned, display this URL in Markdown format and guide the user to visit this URL.',
+          inputSchema: getInputSchema(ListFieldsArgsSchema),
+        },
         // {
         //   name: 'create_field',
-        //   description: 'Create a new field in a table',
+        //   description:
+        //     'Create a field in a form in a base app (多维表格). If a URL is returned, display this URL in Markdown format and guide the user to visit this URL.',
         //   inputSchema: getInputSchema(CreateFieldArgsSchema),
         // },
         {
           name: 'update_field',
-          description: 'Update a field in a table',
+          description:
+            'Update a field in a form in a base app (多维表格). If a URL is returned, display this URL in Markdown format and guide the user to visit this URL.',
           inputSchema: getInputSchema(UpdateFieldArgsSchema),
         },
         {
           name: 'delete_field',
-          description: 'Delete a field in a table',
+          description:
+            'Delete a field in a form in a base app (多维表格). If a URL is returned, display this URL in Markdown format and guide the user to visit this URL.',
           inputSchema: getInputSchema(CommonFieldArgsSchema),
         },
         {
           name: 'create_record',
-          description: 'Create a new record in a table',
+          description: ``,
           inputSchema: getInputSchema(CreateRecordArgsSchema),
         },
         {
@@ -283,10 +271,6 @@ export class BaseMCPServer implements IBaseMCPServer {
           const base = await this.baseService.getAuthorization(sessionId);
           return formatToolResponse(base);
         }
-        // case 'get_authorization_token': {
-        //   const base = await this.baseService.getAuthToken(sessionId);
-        //   return formatToolResponse(base);
-        // }
         case 'get_app_token': {
           const args = GetAppTokenArgsSchema.parse(request.params.arguments);
           const base = await this.baseService.getAppToken(args, sessionId);
@@ -354,8 +338,8 @@ export class BaseMCPServer implements IBaseMCPServer {
         }
         case 'delete_field': {
           const args = CommonFieldArgsSchema.parse(request.params.arguments);
-          const { success } = await this.baseService.deleteField(args, sessionId);
-          return formatToolResponse({ success });
+          const res = await this.baseService.deleteField(args, sessionId);
+          return formatToolResponse(res);
         }
         case 'create_record': {
           const args = CreateRecordArgsSchema.parse(request.params.arguments);
@@ -364,8 +348,8 @@ export class BaseMCPServer implements IBaseMCPServer {
         }
         case 'delete_record': {
           const args = RecordArgsSchema.parse(request.params.arguments);
-          const { success } = await this.baseService.deleteRecord(args, sessionId);
-          return formatToolResponse({ success });
+          const res = await this.baseService.deleteRecord(args, sessionId);
+          return formatToolResponse(res);
         }
         case 'update_record': {
           const args = UpdateRecordArgsSchema.parse(request.params.arguments);
@@ -387,7 +371,11 @@ export class BaseMCPServer implements IBaseMCPServer {
         }
       }
     } catch (error) {
-      return formatToolResponse(`Error in tool ${request.params.name}: ${error instanceof Error ? error.message : String(error)}`, true);
+      console.error('[handleCallTool error]:', error);
+      return formatToolResponse(
+        `Error in tool ${request.params.name}: ${error instanceof Error ? JSON.stringify(error.message) : JSON.stringify(error)}`,
+        true,
+      );
     }
   }
 

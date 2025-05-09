@@ -67,28 +67,32 @@ const LookupFieldValueSchema = z.array(z.string()).describe('查找, ui_type=Loo
 const LinkFieldValueSchema = z.array(z.string()).describe('关联, ui_type=SingleLink 或 DuplexLink');
 
 // 组合所有可能的字段值类型
+// 先注释一部分 以免给模型的上下文过长
 const FieldValueSchema = z.union([
-  BaseFieldValueSchema,
-  TextFieldValueSchema,
+  // BaseFieldValueSchema,
+  z.string(),
+  z.number(),
+  z.boolean(),
+  z.array(z.string()),
+  // TextFieldValueSchema,
   UserFieldValueSchema,
-  PhoneFieldValueSchema,
+  // PhoneFieldValueSchema,
   UrlFieldValueSchema,
   AttachmentFieldValueSchema,
-  NumberFieldValueSchema,
-  ProgressFieldValueSchema,
-  CurrencyFieldValueSchema,
-  RatingFieldValueSchema,
-  SingleSelectFieldValueSchema,
+  // NumberFieldValueSchema,
+  // ProgressFieldValueSchema,
+  // CurrencyFieldValueSchema,
+  // RatingFieldValueSchema,
+  // SingleSelectFieldValueSchema,
   MultiSelectFieldValueSchema,
   DateTimeFieldValueSchema,
-  CheckboxFieldValueSchema,
-  BarcodeFieldValueSchema,
+  // CheckboxFieldValueSchema,
+  // BarcodeFieldValueSchema,
   LookupFieldValueSchema,
   LinkFieldValueSchema,
   LocationFieldValueSchema,
   TextLinkFieldValueSchema,
 ]).describe(`
-  -字段类型对应的传参要求
   -文本Text：填写字符串格式的值
   -数字Number：填写数字格式的值
   -单选SingleSelect：填写选项值，对于新的选项值，将会创建一个新的选项

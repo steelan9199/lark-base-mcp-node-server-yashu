@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { NumberFormatter, CurrencyCode, CurrencyPrecision, ProgressNumberFormatter, RatingSymbol, DateFormatter } from './enums.js';
 
+
 // Base field schema
 const BaseFieldSchema = z.object({
   field_name: z.string(),
@@ -86,8 +87,9 @@ export const ProgressFieldSchema = BaseFieldSchema.extend({
     formatter: z.nativeEnum(ProgressNumberFormatter),
   }),
   range_customize: z.boolean().optional().describe('是否允许自定义进度条值，默认为 false'),
-  min: z.number().optional().describe('进度最小值，range_customize 为 true 时必填'),
-  max: z.number().optional().describe('进度最大值，range_customize 为 true 时必填'),
+  // range_customize: z.boolean().optional().describe('是否允许自定义进度条值，默认为 false'),
+  min: z.number().optional().describe('range_customize 为 true 时必填'),
+  max: z.number().optional().describe('range_customize 为 true 时必填'),
 }).describe('进度（需声明 "ui_type": "Progress"）');
 
 // Rating Field
@@ -266,23 +268,17 @@ export const AutoNumberFieldSchema = BaseFieldSchema.extend({
   property: z.object({
     auto_serial: z.object({
       type: z.enum(['custom', 'auto_increment_number']),
-      reformat_existing_records: z.boolean().optional().describe('是否将修改应用于已有编号，默认为 false'),
+      reformat_existing_records: z.boolean().optional(),
       options: z.array(z.object({
         type: z.enum(['system_number', 'fixed_text', 'created_time']),
-        value: z.string().describe(`规则类型对应的值。
+        value: z.string().describe(`。
 - 若规则类型为 "type": "system_number"，value 为范围在 1-9 的整数，表示自增数字的位数
 - 若规则类型为 "type": "fixed_text"，value 为范围在 20 个字符以内的固定字符
-- 若规则类型为 "type": "created_time"，value 用于指定日期的格式。可选值如下所示：
-  - "yyyyMMdd"：日期为 20220130 的格式
-  - "yyyyMM"：日期为 202201 的格式
-  - "yyyy"：日期为 2022 的格式
-  - "MMdd"：日期为 130 的格式，表示 1 月 30 日
-  - "MM"：日期为 1 的格式，表示月份
-  - "dd"：日期为 30 的格式`),
+- 若规则类型为 "type": "created_time"，value 用于指定日期的格式。`),
       })).optional(),
     }).optional(),
   }).optional(),
-}).describe('自动编号');
+});
 
 // Union type of all field schemas
 export const FieldSchema = z.union([
@@ -313,4 +309,5 @@ export const FieldSchema = z.union([
   CreatedUserFieldSchema,
   ModifiedUserFieldSchema,
   AutoNumberFieldSchema,
-]); 
+]);
+

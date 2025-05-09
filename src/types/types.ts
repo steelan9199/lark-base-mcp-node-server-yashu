@@ -10,12 +10,6 @@ export const ResponseSchema = (dataSchema: z.ZodType<object>) =>
     data: dataSchema,
   });
 
-export const BaseSchema = z.object({
-  id: z.string(),
-  name: z.string(),
-  permissionLevel: z.string(),
-});
-
 // ========== View Related Schemas ==========
 export const ViewSchema = z.object({
   id: z.string(),
@@ -30,7 +24,7 @@ export const TableSchema = z.object({
   description: z.string().optional(),
   primaryFieldId: z.string(),
   fields: z.array(FieldSchema.and(z.object({ id: z.string() }))),
-  views: z.array(ViewSchema),
+  // views: z.array(ViewSchema),
 });
 
 export const GetAppTokenArgsSchema = z.object({
@@ -50,10 +44,10 @@ export const CommonTableArgsSchema = z.object({
 
 export const CreateTableArgsSchema = z.object({
   table: z.object({
-    name: z.string().optional(),
-    fields: z.array(FieldSchema).optional().describe(`Table fields. Rules:
+    name: z.string(),
+    fields: z.array(FieldSchema).describe(`Table fields. Rules:
       - At least one field must be specified.
-      - The primary (first) field must be one of: single line text, long text, date, phone number, email, URL, number, currency, percent, duration, formula, autonumber, barcode.
+      - The type of the primary (first) field must be one of: 1, 2, 5, 13, 15, 20, 22.
       `),
   }),
   // user_access_token: z.string(),
@@ -66,25 +60,14 @@ export const CreateTableResponseSchema = z.object({
   field_id_list: z.array(z.string()).optional(),
 });
 
-export const ListTablesResponseSchema = z.array(
-  z.object({
-    name: z.string().optional(),
-    revision: z.number().optional(),
-    table_id: z.string().optional(),
-  }),
-);
+export const TableResponseSchema = z.object({
+  name: z.string().optional(),
+  revision: z.number().optional(),
+  table_id: z.string().optional(),
+});
 
-// ========== Field Related Schemas ==========
-export const FieldOptionsSchema = z
-  .object({
-    isReversed: z.boolean().optional(),
-    inverseLinkFieldId: z.string().optional(),
-    linkedTableId: z.string().optional(),
-    prefersSingleRecordLink: z.boolean().optional(),
-    color: z.string().optional(),
-    icon: z.string().optional(),
-  })
-  .passthrough();
+export const ListTablesResponseSchema = z.array(TableResponseSchema);
+
 
 // ========== API Argument Schemas ==========
 export const ListRecordsArgsSchema = z.object({
@@ -162,7 +145,10 @@ export const UpdateTableArgsSchema = z.object({
 
 export const CreateFieldArgsSchema = z.object({
   path: CommonTableArgsSchema,
-  data: FieldSchema,
+  // 嵌套一层，要不然会模型给出正确输入时client报错（cursor会报错，不知道为啥，可能对union类型支持不好）
+  data: z.object({
+    field: FieldSchema,
+  }),
   // user_access_token: z.string(),
 });
 
@@ -202,20 +188,34 @@ export const CommonFieldArgsSchema = CommonTableArgsSchema.extend({
 });
 
 export const UpdateFieldArgsSchema = z.object({
-  data: FieldSchema,
+  data: z.object({
+    field: FieldSchema,
+  }),
   path: CommonFieldArgsSchema,
   // user_access_token: z.string(),
 });
 
+export const AppSchema = z.object({
+  app_token: z.string().optional(),
+  name: z.string().optional(),
+  revision: z.number().optional(),
+  is_advanced: z.boolean().optional(),
+  time_zone: z.string().optional(),
+  formula_type: z.number().optional(),
+  advance_version: z.enum(['v1', 'v2']).optional(),
+});
+
+
 // ========== Type Definitions ==========
 export type ListTablesResponse = z.infer<typeof ListTablesResponseSchema>;
 export type BaseSchemaResponse = z.infer<typeof BaseSchemaResponseSchema>;
-export type Base = z.infer<typeof BaseSchema>;
 export type Table = z.infer<typeof TableSchema>;
 export type Field = z.infer<typeof FieldSchema>;
+export type App = z.infer<typeof AppSchema>;
 export type GetAppTokenArgs = z.infer<typeof GetAppTokenArgsSchema>;
 export type ListRecordsArgs = z.infer<typeof ListRecordsArgsSchema>;
 export type ListTablesArgs = z.infer<typeof ListTablesArgsSchema>;
+export type TableResponse = z.infer<typeof TableResponseSchema>;
 export type RecordArgs = z.infer<typeof RecordArgsSchema>;
 export type CreateTableArgs = z.infer<typeof CreateTableArgsSchema>;
 export type CreateTableResponse = z.infer<typeof CreateTableResponseSchema>;
@@ -300,35 +300,34 @@ export type BaseRecord = {
   last_modified_time?: number | undefined;
 };
 
-export interface BaseServiceResponse {
-  success: boolean;
+// ========== Auth Response Types ==========
+export interface AuthResponse {
+  authUrl?: string;
+  message?: string;
 }
 
 export interface IBaseService {
-  getAuthorization(sessionId?: string): Promise<any>;
-  // getAuthToken(sessionId?: string): Promise<any>;
-  getAppToken(getAppTokenArgs: GetAppTokenArgs, sessionId?: string): Promise<any>;
-  createBase(createBaseArgs: CreateBaseArgs, sessionId?: string): Promise<any>;
-  updateBase(updateBaseArgs: UpdateBaseArgs, sessionId?: string): Promise<any>;
-  copyBase(copyBaseArgs: CopyBaseArgs, sessionId?: string): Promise<any>;
-  getBase(getBaseArgs: GetBaseArgs, sessionId?: string): Promise<any>;
-  listRecords(listRecordsArgs: ListRecordsArgs, sessionId?: string): Promise<BaseRecord[]>;
-  listTables(listTablesArgs: ListTablesArgs, sessionId?: string): Promise<{
-    tables: ListTablesResponse;
-    baseToken: string;
-  }>;
-  createTable(data: CreateTableArgs, sessionId?: string): Promise<CreateTableResponse>;
-  updateTable(updateTableArgs: UpdateTableArgs, sessionId?: string): Promise<{ name?: string }>;
-  deleteTable(deleteTableArgs: CommonTableArgs, sessionId?: string): Promise<BaseServiceResponse>;
-  listFields(listFieldsArgs: ListFieldsArgs, sessionId?: string): Promise<Field[]>;
-  createField(createFieldArgs: CreateFieldArgs, sessionId?: string): Promise<Field | undefined>;
-  updateField(updateFieldArgs: UpdateFieldArgs, sessionId?: string): Promise<Field | undefined>;
-  deleteField(deleteFieldArgs: CommonFieldArgs, sessionId?: string): Promise<BaseServiceResponse>;
-  createRecord(createRecordArgs: CreateRecordArgs, sessionId?: string): Promise<BaseRecord>;
-  updateRecord(updateRecordArgs: UpdateRecordArgs, sessionId?: string): Promise<BaseRecord>;
-  deleteRecord(deleteRecordArgs: RecordArgs, sessionId?: string): Promise<BaseServiceResponse>;
-  getRecord(getRecordArgs: RecordArgs, sessionId?: string): Promise<BaseRecord | null>;
-  createBatchRecord(createBatchRecordArgs: CreateBatchRecordArgs, sessionId?: string): Promise<BaseRecord[]>;
+  getAuthorization(sessionId?: string): Promise<AuthResponse & { success?: boolean }>;
+  getAppToken(getAppTokenArgs: GetAppTokenArgs, sessionId?: string): Promise<AuthResponse | string>;
+  createBase(createBaseArgs: CreateBaseArgs, sessionId?: string): Promise<AuthResponse | App>;
+  updateBase(updateBaseArgs: UpdateBaseArgs, sessionId?: string): Promise<AuthResponse | App>;
+  copyBase(copyBaseArgs: CopyBaseArgs, sessionId?: string): Promise<AuthResponse | App>;
+  getBase(getBaseArgs: GetBaseArgs, sessionId?: string): Promise<AuthResponse | App>;
+  listRecords(listRecordsArgs: ListRecordsArgs, sessionId?: string): Promise<AuthResponse | BaseRecord[]>;
+  listTables(listTablesArgs: ListTablesArgs, sessionId?: string): Promise<AuthResponse | ListTablesResponse>;
+  createTable(data: CreateTableArgs, sessionId?: string): Promise<AuthResponse | TableResponse>;
+  updateTable(updateTableArgs: UpdateTableArgs, sessionId?: string): Promise<AuthResponse | { name?: string }>;
+  deleteTable(deleteTableArgs: CommonTableArgs, sessionId?: string): Promise<AuthResponse | { success?: boolean }>;
+  listFields(listFieldsArgs: ListFieldsArgs, sessionId?: string): Promise<AuthResponse | Field[]>;
+  createField(createFieldArgs: CreateFieldArgs, sessionId?: string): Promise<AuthResponse | Field>;
+  updateField(updateFieldArgs: UpdateFieldArgs, sessionId?: string): Promise<AuthResponse | Field>;
+  deleteField(deleteFieldArgs: CommonFieldArgs, sessionId?: string): Promise<AuthResponse | { success?: boolean }>;
+  createRecord(createRecordArgs: CreateRecordArgs, sessionId?: string): Promise<AuthResponse | BaseRecord>;
+  updateRecord(updateRecordArgs: UpdateRecordArgs, sessionId?: string): Promise<AuthResponse | BaseRecord>;
+  deleteRecord(deleteRecordArgs: RecordArgs, sessionId?: string): Promise<AuthResponse | { success?: boolean }>;
+  getRecord(getRecordArgs: RecordArgs, sessionId?: string): Promise<AuthResponse | BaseRecord>;
+  createBatchRecord(createBatchRecordArgs: CreateBatchRecordArgs, sessionId?: string): Promise<AuthResponse | BaseRecord[]>;
+  // getTokenOrAuthUrl(sessionId?: string): Promise<AuthResponse | { token?: string }>;
 }
 
 export interface IBaseMCPServer {
