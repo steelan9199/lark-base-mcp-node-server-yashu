@@ -20,10 +20,6 @@
       "name": "Debug MCP Server (stdio)",
       "skipFiles": ["<node_internals>/**"],
       "program": "${workspaceFolder}/dist/index.js",
-      "args": [
-        "-p", "${input:personalBaseToken}",
-        "-a", "${input:appToken}"
-      ],
       "env": {
         "NODE_ENV": "development"
       },

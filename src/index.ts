@@ -13,19 +13,19 @@ const main = async () => {
     program.name('base-mcp').description('Base MCP Tool').version(currentVersion);
     program
         .description('Start Base MCP Service')
-        .option('-p, --personal-base-token <personalBaseToken>', 'Personal Base Token')
-        .option('-a, --app-token <appToken>', 'App Token')
+        // .option('-p, --personal-base-token <personalBaseToken>', 'Personal Base Token')
+        // .option('-a, --app-token <appToken>', 'App Token')
         .action(async (options) => {
             let fileOptions = {};
-            if (options.config) {
-                try {
-                    const configContent = fs.readFileSync(options.config, 'utf-8');
-                    fileOptions = JSON.parse(configContent);
-                } catch (err) {
-                    console.error('Failed to read config file:', err);
-                    process.exit(1);
-                }
-            }
+            // if (options.config) {
+            //     try {
+            //         const configContent = fs.readFileSync(options.config, 'utf-8');
+            //         fileOptions = JSON.parse(configContent);
+            //     } catch (err) {
+            //         console.error('Failed to read config file:', err);
+            //         process.exit(1);
+            //     }
+            // }
             const mergedOptions = { ...fileOptions, ...options, transport: 'stdio' };
             const baseService = new BaseService(mergedOptions);
             console.log('baseservice end');

@@ -143,11 +143,6 @@ export class BaseMCPServer implements IBaseMCPServer {
           'Get authorization to generate user_access_token which is necessary for base tools calling. If this tool returns a url, use markdown to show this url as a hyperlink and guide the user to visit the URL and authorize and then use this tool again to get token. If this tool returns a user_access_token, just return the response and don"t generate a hyperlink.',
         inputSchema: getInputSchema(z.object({})),
       },
-      // {
-      //   name: 'get_authorization_token',
-      //   description: 'Get user_access_token for base tools calling. If the user has already acquired the token, skip this step.',
-      //   inputSchema: getInputSchema(z.object({})),
-      // },
       {
         name: 'get_app_token',
         description: 'Get app_token from a url if the user wants to operate with base',
@@ -168,21 +163,21 @@ export class BaseMCPServer implements IBaseMCPServer {
         description: 'Create base app (多维表格) if the user does not provide an App token',
         inputSchema: getInputSchema(CreateBaseArgsSchema),
       },
-      // {
-      //   name: 'update_base',
-      //   description: '更新一个base app（多维表格），如果返回了url，用markdown格式显示这个url，并引导用户访问这个url',
-      //   inputSchema: getInputSchema(UpdateBaseArgsSchema),
-      // },
+      {
+        name: 'update_base',
+        description: '更新一个base app（多维表格），如果返回了url，用markdown格式显示这个url，并引导用户访问这个url',
+        inputSchema: getInputSchema(UpdateBaseArgsSchema),
+      },
       // {
       //   name: 'get_base',
       //   description: '获取一个base app（多维表格）的信息，如果返回了url，用markdown格式显示这个url，并引导用户访问这个url',
       //   inputSchema: getInputSchema(GetBaseArgsSchema),
       // },
-      // {
-      //   name: 'copy_base',
-      //   description: '复制一个base app（多维表格）到另一个app，如果返回了url，用markdown格式显示这个url，并引导用户访问这个url',
-      //   inputSchema: getInputSchema(CopyBaseArgsSchema),
-      // },
+      {
+        name: 'copy_base',
+        description: '复制一个base app（多维表格）到另一个app，如果返回了url，用markdown格式显示这个url，并引导用户访问这个url',
+        inputSchema: getInputSchema(CopyBaseArgsSchema),
+      },
       {
         name: 'create_table',
         description:
@@ -194,11 +189,11 @@ export class BaseMCPServer implements IBaseMCPServer {
         description: '更新一个base app（多维表格）中的表单，如果返回了url，用markdown格式显示这个url，并引导用户访问这个url',
         inputSchema: getInputSchema(UpdateTableArgsSchema),
       },
-      // {
-      //   name: 'delete_table',
-      //   description: 'Delete a table in a app',
-      //   inputSchema: getInputSchema(CommonTableArgsSchema),
-      // },
+      {
+        name: 'delete_table',
+        description: 'Delete a table in a app',
+        inputSchema: getInputSchema(CommonTableArgsSchema),
+      },
       {
         name: 'list_fields',
         description:
@@ -225,21 +220,7 @@ export class BaseMCPServer implements IBaseMCPServer {
       },
       {
         name: 'create_record',
-        description: `Create a record in a table.
-        -文本Text：填写字符串格式的值
-        -数字Number：填写数字格式的值
-        -单选SingleSelect：填写选项值，对于新的选项值，将会创建一个新的选项
-        -多选MultiSelect：填写多个选项值，对于新的选项值，将会创建一个新的选项。如果填写多个相同的新选项值，将会创建多个相同的选项
-        -日期DateTime：填写毫秒级时间戳
-        -复选框Checkbox：填写 true 或 false
-        -条码Barcode：填写条码值
-        -人员User：填写用户的open_id、union_id 或 user_id，类型需要与 user_id_type 指定的类型一致
-        -电话号码Phone：填写文本内容, 纯数字
-        -超链接Url：对象，两个key，text 为文本值，link 为 URL 链接，例如 { text: '链接文本', link: 'https://www.123.com' }
-        -附件Attachment：FileSchema, 填写附件 token，需要先调用上传素材或分片上传素材接口将附件上传至该多维表格中
-        -单向关联Lookup：数组，填写被关联表的记录 ID
-        -双向关联DuplexLink：数组，填写被关联表的记录 ID
-        -地理位置Location：填写经纬度坐标，用,拼接，例如"123.124,123.124"`,
+        description: 'Create a record in a table.',
         inputSchema: getInputSchema(CreateRecordArgsSchema),
       },
       {
@@ -250,15 +231,7 @@ export class BaseMCPServer implements IBaseMCPServer {
       {
         name: 'update_record',
         description: 'Update an existing record in a table',
-        inputSchema: getInputSchema(
-          z.object({
-            path: RecordArgsSchema,
-            data: z.object({
-              // todo 这里先any，要不然cursor 报错 your message is too long
-              fields: z.any(),
-            }),
-          }),
-        ),
+        inputSchema: getInputSchema(UpdateRecordArgsSchema),
       },
       {
         name: 'get_record',
@@ -266,8 +239,6 @@ export class BaseMCPServer implements IBaseMCPServer {
         inputSchema: getInputSchema(RecordArgsSchema),
       },
     ];
-    // 包括注释掉的部分也收集inputSchema（注释内容保留，inputSchemas顺序与tools数组一致）
-    const inputSchemas = tools.map(tool => tool.inputSchema);
     // logToFile(inputSchemas);
     return {
       tools,
@@ -390,10 +361,12 @@ export class BaseMCPServer implements IBaseMCPServer {
           throw new Error(`Unknown tool: ${request.params.name}`);
         }
       }
-    } catch (error) {
-      console.error('[handleCallTool error]:', error);
+    } catch (error: any) {
+      // console.error('[handleCallTool error]:', error instanceof Error, error);
+      // console.error('[handleCallTool error message]:', error?.message);
+      const errorMessage = error?.response?.data ? JSON.stringify(error?.response?.data) : error instanceof Error ? error.message : JSON.stringify(error);
       return formatToolResponse(
-        `Error in tool ${request.params.name}: ${error instanceof Error ? JSON.stringify(error.message) : JSON.stringify(error)}`,
+        `Error in tool ${request.params.name}: ${errorMessage}`,
         true,
       );
     }
