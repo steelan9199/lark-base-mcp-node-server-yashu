@@ -28,7 +28,10 @@ const main = async () => {
             }
             const mergedOptions = { ...fileOptions, ...options, transport: 'stdio' };
             const baseService = new BaseService(mergedOptions);
+            console.log('baseservice end');
             const server = new BaseMCPServer(baseService);
+            console.log('mcp server end');
+
             const transport = new StdioServerTransport();
             sessionManager.createSession(server.stdioUUID, options.appToken, options.personalBaseToken, transport);
             await server.connect(transport);

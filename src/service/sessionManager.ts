@@ -45,13 +45,13 @@ class SessionManager {
   }
 
   getUserAccessToken(sessionId?: string): string | undefined {
-    console.log('getUserAccessToken', sessionId);
+    // console.log('getUserAccessToken', sessionId);
     if (!sessionId) {
       return undefined;
     }
     const session = this.sessions.get(sessionId);
     const token = session?.userAccessToken;
-    console.log('getUserAccessToken userAccessToken', token);
+    // console.log('getUserAccessToken userAccessToken', token);
 
     return token;
   }

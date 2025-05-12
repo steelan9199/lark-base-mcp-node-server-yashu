@@ -59,6 +59,26 @@ export class BaseService implements IBaseService {
       appSecret: '',
       disableTokenCache: true,
       domain: isDev ? 'https://open.feishu-boe.cn' : '',
+      // logger: {
+      //   info: (...args: any[]) => {
+      //     //
+      //   },
+      //   error: (...args: any[]) => {
+      //     if (JSON.stringify(args).includes('is needed')) {
+      //       return;
+      //     }
+      //     throw new Error(args.join(' '));
+      //   },
+      //   warn: (...args: any[]) => {
+      //     //
+      //   },
+      //   debug: (...args: any[]) => {
+      //     //
+      //   },
+      //   trace: (...args: any[]) => {
+      //     //
+      //   },
+      // }
     });
   }
 
@@ -412,7 +432,7 @@ export class BaseService implements IBaseService {
 
 
     if (data.code != 0) {
-      throw new Error(`Failed to create record: ${data}`);
+      throw new Error(`Failed to create record: ${JSON.stringify(data)}`);
     }
 
     return data?.data?.record || { fields: {} };

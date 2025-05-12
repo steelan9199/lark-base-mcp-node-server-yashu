@@ -16,9 +16,10 @@ const main = async () => {
   const app = express();
 
   app.get('/sse', async (req: Request, res: Response) => {
-    console.log(`[SSE Connection] Client connected`);
 
     const { appToken, personalBaseToken } = req.query;
+    console.log(`[SSE Connection] Client connected, id is: `, appToken);
+
 
     if (!appToken || !personalBaseToken) {
       res.status(400).send('Missing appToken or personalBaseToken');

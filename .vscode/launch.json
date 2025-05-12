@@ -1,0 +1,55 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Debug MCP Server (SSE)",
+      "skipFiles": ["<node_internals>/**"],
+      "program": "${workspaceFolder}/dist/index.sse.js",
+      "env": {
+        "NODE_ENV": "development"
+      },
+      "outFiles": ["${workspaceFolder}/dist/**/*.js"],
+      "preLaunchTask": "npm: build",
+      "console": "integratedTerminal"
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Debug MCP Server (stdio)",
+      "skipFiles": ["<node_internals>/**"],
+      "program": "${workspaceFolder}/dist/index.js",
+      "args": [
+        "-p", "${input:personalBaseToken}",
+        "-a", "${input:appToken}"
+      ],
+      "env": {
+        "NODE_ENV": "development"
+      },
+      "outFiles": ["${workspaceFolder}/dist/**/*.js"],
+      "preLaunchTask": "npm: build",
+      "console": "integratedTerminal"
+    },
+    {
+      "type": "node",
+      "request": "attach",
+      "name": "Attach to Process",
+      "port": 9229,
+      "restart": true,
+      "skipFiles": ["<node_internals>/**"]
+    }
+  ],
+  "inputs": [
+    {
+      "id": "personalBaseToken",
+      "type": "promptString",
+      "description": "输入 Personal Base Token"
+    },
+    {
+      "id": "appToken",
+      "type": "promptString",
+      "description": "输入 App Token"
+    }
+  ]
+} 
