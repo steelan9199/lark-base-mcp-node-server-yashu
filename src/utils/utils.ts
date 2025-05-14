@@ -1,7 +1,6 @@
 import path from 'path';
 import fs from 'fs';
 import { format } from 'date-fns';
-import axios from 'axios';
 import pick from 'lodash.pick';
 import get from 'lodash.get';
 
@@ -51,28 +50,3 @@ export const uuid = () => {
 
   return uuid;
 }
-
-
-export const formatErrors = (e: any) => {
-  if (e instanceof axios.AxiosError) {
-      const { message, response, request, config } = pick(e, [
-          'message',
-          'response',
-          'request',
-          'config',
-      ]);
-      const filteredErrorInfo = {
-          message,
-          config: pick(config, ['data', 'url', 'params', 'method']),
-          request: pick(request, ['protocol', 'host', 'path', 'method']),
-          response: pick(response, ['data', 'status', 'statusText']),
-      };
-      const errors = [filteredErrorInfo];
-      const specificError = get__default["default"](e, 'response.data');
-      if (specificError) {
-          errors.push(Object.assign(Object.assign({}, specificError), (specificError.error ? specificError.error : {})));
-      }
-      return errors;
-  }
-  return [e];
-};

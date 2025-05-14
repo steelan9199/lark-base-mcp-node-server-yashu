@@ -39,7 +39,6 @@ import { SSEServerTransport } from '@modelcontextprotocol/sdk/server/sse.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { currentVersion } from '../utils/version.js';
 import { logToFile, uuid } from '../utils/utils.js';
-import UglifyJS from 'uglify-js';
 
 const removeSchemaProperty = (obj: any) => {
   if (typeof obj !== 'object' || obj === null) return;
@@ -49,7 +48,7 @@ const removeSchemaProperty = (obj: any) => {
 
 const getInputSchema = (schema: z.ZodType<object>): ListToolsResult['tools'][0]['inputSchema'] => {
   let jsonSchema = zodToJsonSchema(schema, {
-    $refStrategy: 'none'
+    // $refStrategy: 'none'
   });
   removeSchemaProperty(jsonSchema);
   if (!('type' in jsonSchema) || jsonSchema.type !== 'object') {

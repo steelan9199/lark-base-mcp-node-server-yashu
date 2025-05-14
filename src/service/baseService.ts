@@ -31,7 +31,6 @@ import {
 import { FieldType } from '../types/enums.js';
 import { sessionManager } from './sessionManager.js';
 import { Client, withUserAccessToken } from '@larksuiteoapi/node-sdk';
-import { formatErrors } from '../utils/utils.js';
 
 
 const maxRecordLength = 100;

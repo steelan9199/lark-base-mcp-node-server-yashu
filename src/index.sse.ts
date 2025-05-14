@@ -21,10 +21,10 @@ const main = async () => {
     console.log(`[SSE Connection] Client connected, id is: `, appToken);
 
 
-    if (!appToken || !personalBaseToken) {
-      res.status(400).send('Missing appToken or personalBaseToken');
-      return;
-    }
+    // if (!appToken || !personalBaseToken) {
+    //   res.status(400).send('Missing appToken or personalBaseToken');
+    //   return;
+    // }
 
     const transport = new SSEServerTransport('/messages', res);
     const sessionId = transport.sessionId;
