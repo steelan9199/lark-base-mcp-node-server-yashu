@@ -1,8 +1,8 @@
 import { z } from 'zod';
-import { NumberFormatter, CurrencyCode, CurrencyPrecision, ProgressNumberFormatter, RatingSymbol, DateFormatter } from './enums.js';
+import { NumberFormatter,CurrencyCode,CurrencyPrecision,ProgressNumberFormatter,RatingSymbol,DateFormatter } from './enums.js';
 
 
-// Base field schema
+// // Base field schema
 const BaseFieldSchema = z.object({
   field_name: z.string(),
   type: z.number(),
@@ -41,75 +41,29 @@ const BaseFieldSchema = z.object({
   property: z.any().optional(),
 }).describe('创建字段/表单时字段的schema');
 
-// Text Field
-export const TextfieldSchema = z.object({
+// Merge schemas with type 1
+export const Type1FieldSchema = z.object({
   field_name: z.string(),
   type: z.literal(1),
-    ui_type: z.enum(['Text']),
-  }).describe('schema of a text field');
+  ui_type: z.enum(['Text', 'Email', 'Barcode']),
+}).describe('schema of fields with type 1: Text, Email, Barcode');
 
-export const EmailfieldSchema = z.object({
-  type: z.literal(1),
+// Merge schemas with type 2
+export const Type2FieldSchema = z.object({
   field_name: z.string(),
-  ui_type: z.literal('Email'),
-}).describe('schema of a email field');
-
-// Barcode Field
-export const BarcodefieldSchema = z.object({
-  type: z.literal(1),
-  field_name: z.string(),
-  ui_type: z.literal('Barcode'),
-}).describe('schema of a barcode field');
-
-// Number Field
-export const NumberfieldSchema = z.object({
   type: z.literal(2),
-  field_name: z.string(),
-  ui_type: z.literal('Number'),
+  ui_type: z.enum(['Number', 'Currency', 'Progress', 'Rating']),
   property: z.object({
     formatter: z.nativeEnum(NumberFormatter).optional(),
-  }).optional(),
-}).describe('schema of a number field');
-
-// Currency Field
-export const CurrencyfieldSchema = z.object({
-  field_name: z.string(),
-  type: z.literal(2),
-  ui_type: z.literal('Currency'),
-  property: z.object({
-    currency_code: z.nativeEnum(CurrencyCode),
-    formatter: z.nativeEnum(CurrencyPrecision),
-  }),
-}).describe('schema of a currency field');
-
-// Progress Field
-export const ProgressfieldSchema = z.object({
-  field_name: z.string(),
-  type: z.literal(2),
-  ui_type: z.literal('Progress'),
-  property: z.object({
-    formatter: z.nativeEnum(ProgressNumberFormatter),
-  }),
-  range_customize: z.boolean().optional().describe('default is false'),
-  // range_customize: z.boolean().optional().describe('是否允许自定义进度条值，默认为 false'),
-  min: z.number().optional().describe( `range_customize = true,it's required`),
-  max: z.number().optional().describe( `range_customize = true,it's required`),
-}).describe('schema of a progress field');
-
-// Rating Field
-export const RatingfieldSchema = z.object({
-  field_name: z.string(),
-  type: z.literal(2),
-  ui_type: z.literal('Rating'),
-  property: z.object({
-    formatter: z.literal('0'),
+    currency_code: z.nativeEnum(CurrencyCode).optional(),
     rating: z.object({
       symbol: z.nativeEnum(RatingSymbol).optional(),
     }).optional(),
-  }),
-  min: z.number().describe('just 0 or 1'),
-  max: z.number().describe('just 1~10'),
-}).describe('schema of a rating field');
+  }).optional(),
+  range_customize: z.boolean().optional(),
+  min: z.number().optional(),
+  max: z.number().optional(),
+}).describe('schema of fields with type 2: Number, Currency, Progress, Rating');
 
 // Single Select Field
 export const SingleSelectfieldSchema = z.object({
@@ -203,7 +157,7 @@ export const SingleLinkfieldSchema = z.object({
 export const LookupfieldSchema = z.object({
   field_name: z.string(),
   type: z.literal(19),
-  // ui_type: z.literal('Lookup'), // 先不加上，sdk 的ui_type还没有这个枚举值
+  // ui_type: z.literal('Lookup'),// 先不加上，sdk 的ui_type还没有这个枚举值
 }).describe('schema of a Lookup field');
 
 // Formula Field
@@ -212,7 +166,7 @@ export const FormulafieldSchema = z.object({
   type: z.literal(20),
   ui_type: z.literal('Formula'),
   property: z.object({
-    formatter: z.union([z.nativeEnum(NumberFormatter), z.nativeEnum(DateFormatter)]).optional(),
+    formatter: z.union([z.nativeEnum(NumberFormatter),z.nativeEnum(DateFormatter)]).optional(),
     formula_expression: z.string().optional(),
   }).optional(),
 }).describe('schema of a Formula field');
@@ -236,7 +190,7 @@ export const LocationfieldSchema = z.object({
   ui_type: z.literal('Location'),
   // property: z.object({
   //   location: z.object({
-  //     input_type: z.enum(['only_mobile', 'not_limit']).describe('地理位置输入限制，可选值有 only_mobile：仅允许移动端实时定位, not_limit：无限制，可输入任意地理位置'),
+  //     input_type: z.enum(['only_mobile','not_limit']).describe('地理位置输入限制，可选值有 only_mobile：仅允许移动端实时定位,not_limit：无限制，可输入任意地理位置'),
   //   }).optional(),
   // }).optional(),
 }).describe('schema of a Location field');
@@ -289,10 +243,10 @@ export const AutoNumberfieldSchema = z.object({
   ui_type: z.literal('AutoNumber'),
 //   property: z.object({
 //     auto_serial: z.object({
-//       type: z.enum(['custom', 'auto_increment_number']),
+//       type: z.enum(['custom','auto_increment_number']),
 //       reformat_existing_records: z.boolean().optional(),
 //       options: z.array(z.object({
-//         type: z.enum(['system_number', 'fixed_text', 'created_time']),
+//         type: z.enum(['system_number','fixed_text','created_time']),
 //         value: z.string().describe(`。
 // - 若规则类型为 "type": "system_number"，value 为范围在 1-9 的整数，表示自增数字的位数
 // - 若规则类型为 "type": "fixed_text"，value 为范围在 20 个字符以内的固定字符
@@ -302,16 +256,11 @@ export const AutoNumberfieldSchema = z.object({
 //   }).optional(),
 }).describe('schema of a AutoNumber field');
 
-// Union type of all field schemas
+// Update FieldSchema union
 export const FieldSchema = z.union([
   BaseFieldSchema,
-  TextfieldSchema,
-  EmailfieldSchema,
-  BarcodefieldSchema,
-  NumberfieldSchema,
-  CurrencyfieldSchema,
-  ProgressfieldSchema,
-  RatingfieldSchema,
+  Type1FieldSchema,
+  Type2FieldSchema,
   SingleSelectfieldSchema,
   MultiSelectfieldSchema,
   DateTimefieldSchema,
@@ -331,26 +280,4 @@ export const FieldSchema = z.union([
   CreatedUserfieldSchema,
   ModifiedUserfieldSchema,
   AutoNumberfieldSchema,
-]).describe(`
-- Text type = 1,
-- Number type = 2,
-- SingleSelect type = 3,
-- MultiSelect type = 4,
-- DateTime type = 5,
-- Checkbox type = 7,
-- User type = 11,
-- Phone type = 13,
-- Url type = 15,
-- Attachment type = 17,
-- SingleLink type = 18,
-- Lookup type = 19,
-- Formula type = 20,
-- DuplexLink type = 21,
-- Location type = 22,
-- GroupChat type = 23,
-- CreatedTime type = 1001,
-- ModifiedTime type = 1002,
-- CreatedUser type = 1003,
-- ModifiedUser type = 1004,
-`);
-
+]).describe(`Text type=1,Number type=2,SingleSelect type=3,MultiSelect type=4,DateTime type=5,Checkbox type=7,User type=11,Phone type=13,Url type=15,Attachment type=17,SingleLink type=18,Lookup type=19,Formula type=20,DuplexLink type=21,Location type=22,GroupChat type=23,CreatedTime type=1001,ModifiedTime type=1002,CreatedUser type=1003,ModifiedUser type=1004`);

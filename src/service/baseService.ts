@@ -1,6 +1,5 @@
 /* eslint-disable no-case-declarations */
 /* eslint-disable no-restricted-syntax */
-import { AppType, BaseClient } from '@lark-base-open/node-sdk';
 import {
   IBaseService,
   BaseRecord,
@@ -37,7 +36,9 @@ import { formatErrors } from '../utils/utils.js';
 
 const maxRecordLength = 100;
 
-const isDev = process.env.NODE_ENV === 'development';
+// 发npm包先写死，后续优化
+const isDev = true;
+// const isDev = process.env.NODE_ENV === 'development';
 
 const BASE_AUTHORIZE_URL = 'https://bytedance.feishu-boe.net/space/api/bitable/base_ai/v1/authorize/get_token';
 
@@ -147,7 +148,7 @@ export class BaseService implements IBaseService {
       } else if (res.data.authenticationUrl) {
         return {
           authUrl: res.data.authenticationUrl,
-          message: '引导用户先访问链接进行时授权，用户授权完成后尝试再次调用本工具',
+          message: '引导用户先访问链接进行时授权，用户授权完成后尝试再次调用本工具' + `, ${JSON.stringify(sessionId)}}`,
         };
       } else {
         throw new Error(`Failed to get authorization: ${JSON.stringify(res)}`);
@@ -161,8 +162,8 @@ export class BaseService implements IBaseService {
 
   async createBase(args: CreateBaseArgs, sessionId?: string) {
     const { token, authUrl, message } = await this.getTokenOrAuthUrl(sessionId);
-    if (authUrl) {
-      return { authUrl, message };
+    if (authUrl || !token) {
+      return { authUrl, message, sessionId };
     }
     const res = await this._client.bitable.v1.app.create(
       {
@@ -172,10 +173,13 @@ export class BaseService implements IBaseService {
         },
       },
       withUserAccessToken(token || '')
-    );
+    ).catch((err) => {
+
+      throw new Error(`Failed to create base catch: ${JSON.stringify(err)}, ${JSON.stringify(sessionId)}, ${JSON.stringify(token)}`);
+    })
 
     if (res?.code != 0) {
-      throw new Error(`Failed to create base: ${JSON.stringify(res)}`);
+      throw new Error(`Failed to create base: ${JSON.stringify(res)}, ${JSON.stringify(sessionId)}, ${JSON.stringify(token)}`);
     }
     return res.data?.app!;
   }
@@ -250,7 +254,7 @@ export class BaseService implements IBaseService {
     const params = {
       page_size: 10,
       sort: args.sort,
-      filter: args.filter,
+      // filter: args.filter,
       field_names: args.field_names,
     };
 
@@ -342,6 +346,7 @@ export class BaseService implements IBaseService {
 
     return data?.name ? { name: data?.name } : {};
   }
+
 
   async listFields(args: ListFieldsArgs, sessionId?: string) {
     const { token, authUrl, message } = await this.getTokenOrAuthUrl(sessionId);

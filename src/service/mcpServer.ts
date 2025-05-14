@@ -39,10 +39,19 @@ import { SSEServerTransport } from '@modelcontextprotocol/sdk/server/sse.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { currentVersion } from '../utils/version.js';
 import { logToFile, uuid } from '../utils/utils.js';
+import UglifyJS from 'uglify-js';
+
+const removeSchemaProperty = (obj: any) => {
+  if (typeof obj !== 'object' || obj === null) return;
+  delete obj['$schema'];
+  Object.values(obj).forEach(removeSchemaProperty);
+};
+
 const getInputSchema = (schema: z.ZodType<object>): ListToolsResult['tools'][0]['inputSchema'] => {
-  const jsonSchema = zodToJsonSchema(schema, {
+  let jsonSchema = zodToJsonSchema(schema, {
     $refStrategy: 'none'
   });
+  removeSchemaProperty(jsonSchema);
   if (!('type' in jsonSchema) || jsonSchema.type !== 'object') {
     throw new Error(
       `Invalid input schema to convert in base-mcp-server: expected an object but got ${'type' in jsonSchema ? jsonSchema.type : 'no type'}`,
@@ -136,7 +145,7 @@ export class BaseMCPServer implements IBaseMCPServer {
 
   private async handleListTools(): Promise<ListToolsResult> {
     // 收集所有tools（包括注释掉的）inputSchema
-    const tools = [
+    let tools = [
       {
         name: 'get_authorization',
         description:
@@ -173,22 +182,22 @@ export class BaseMCPServer implements IBaseMCPServer {
       //   description: '获取一个base app（多维表格）的信息，如果返回了url，用markdown格式显示这个url，并引导用户访问这个url',
       //   inputSchema: getInputSchema(GetBaseArgsSchema),
       // },
-      {
-        name: 'copy_base',
-        description: '复制一个base app（多维表格）到另一个app，如果返回了url，用markdown格式显示这个url，并引导用户访问这个url',
-        inputSchema: getInputSchema(CopyBaseArgsSchema),
-      },
+      // {
+      //   name: 'copy_base',
+      //   description: '复制一个base app（多维表格）到另一个app，如果返回了url，用markdown格式显示这个url，并引导用户访问这个url',
+      //   inputSchema: getInputSchema(CopyBaseArgsSchema),
+      // },
       {
         name: 'create_table',
         description:
           '在一个base app（多维表格） 中创建表单。需要事先获取app token。让用户直接提供app token或者一个base的url，如果没有，用creat_base创建一个app获取app token， 不要伪造app token',
         inputSchema: getInputSchema(CreateTableArgsSchema),
       },
-      {
-        name: 'update_table',
-        description: '更新一个base app（多维表格）中的表单，如果返回了url，用markdown格式显示这个url，并引导用户访问这个url',
-        inputSchema: getInputSchema(UpdateTableArgsSchema),
-      },
+      // {
+      //   name: 'update_table',
+      //   description: '更新一个base app（多维表格）中的表单，如果返回了url，用markdown格式显示这个url，并引导用户访问这个url',
+      //   inputSchema: getInputSchema(UpdateTableArgsSchema),
+      // },
       {
         name: 'delete_table',
         description: 'Delete a table in a app',
@@ -239,7 +248,12 @@ export class BaseMCPServer implements IBaseMCPServer {
         inputSchema: getInputSchema(RecordArgsSchema),
       },
     ];
-    // logToFile(inputSchemas);
+
+    // logToFile(tools.inputSchema);
+    // tools = JSON.parse(result.code, result);
+    // console.log('handlelisttool finished', tools);
+    // const inputSchemas = tools.map((tool) => tool.inputSchema);
+    logToFile(tools);
     return {
       tools,
     };
@@ -250,11 +264,12 @@ export class BaseMCPServer implements IBaseMCPServer {
       const transport = this.server.transport;
       let sessionId = transport?.sessionId as string;
       if (transport instanceof SSEServerTransport) {
-        if (!sessionId) {
-          throw new Error('Session ID is required');
-        }
       } else if (transport instanceof StdioServerTransport) {
         sessionId = this.stdioUUID;
+      }
+
+      if (!sessionId) {
+        throw new Error('Session ID is required');
       }
 
       switch (request.params.name) {

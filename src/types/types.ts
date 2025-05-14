@@ -76,7 +76,7 @@ export const ListRecordsArgsSchema = z.object({
   // user_access_token: z.string(),
   field_names: z.string().optional().describe('Use name rather than id to specify the fields to return.It needs to be formatted as a JSON array string'),
   sort: z.array(z.string()).optional(),
-  filter: z.string().optional().describe('eg. AND(CurrentValue.[订单号].contains("004"),CurrentValue.[订单日期]= TODAY())'),
+  // filter: z.string().optional().describe('eg. AND(CurrentValue.[订单号].contains("004"),CurrentValue.[订单日期]= TODAY())'),
   recordLength: z.number().optional().default(20),
 });
 
@@ -90,13 +90,6 @@ export const GetTableSchemaArgsSchema = z.object({
   table_id: z.string(),
 });
 
-export const SearchRecordsArgsSchema = z.object({
-  baseId: z.string(),
-  tableId: z.string(),
-  searchTerm: z.string().describe('Text to search for in records'),
-  fieldIds: z.array(z.string()).optional().describe('Specific field ids to search in. If not provided, searches all text-based fields.'),
-  maxRecords: z.number().optional().describe('Maximum number of records to return. Defaults to 100.'),
-});
 
 export const RecordArgsSchema = z.object({
   app_token: z.string(),
@@ -108,22 +101,7 @@ export const RecordArgsSchema = z.object({
 export const CreateRecordArgsSchema = CommonTableArgsSchema.extend({
   fields: RecordFieldsSchema,
   // user_access_token: z.string(),
-}).describe(`create a record
-  -文本Text：填写字符串格式的值
-  -数字Number：填写数字格式的值
-  -单选SingleSelect：填写选项值，对于新的选项值，将会创建一个新的选项
-  -多选MultiSelect：填写多个选项值，对于新的选项值，将会创建一个新的选项。如果填写多个相同的新选项值，将会创建多个相同的选项
-  -日期DateTime：填写毫秒级时间戳
-  -复选框Checkbox：填写 true 或 false
-  -条码Barcode：填写条码值
-  -人员User：填写用户的open_id、union_id 或 user_id，类型需要与 user_id_type 指定的类型一致
-  -电话号码Phone：填写文本内容, 纯数字
-  -超链接Url：对象，两个key，text 为文本值，link 为 URL 链接，例如 { text: '链接文本', link: 'https://www.123.com' }
-  -附件Attachment：FileSchema, 填写附件 token，需要先调用上传素材或分片上传素材接口将附件上传至该多维表格中
-  -单向关联Lookup：数组，填写被关联表的记录 ID
-  -双向关联DuplexLink：数组，填写被关联表的记录 ID
-  -地理位置Location：填写经纬度坐标，用,拼接，例如"123.124,123.124"`
-  );
+}).describe(`文本Text：填写字符串格式的值; 数字Number：填写数字格式的值; 单选SingleSelect：填写选项值，对于新的选项值，将会创建一个新的选项; 多选MultiSelect：填写多个选项值，对于新的选项值，将会创建一个新的选项。如果填写多个相同的新选项值，将会创建多个相同的选项; 日期DateTime：填写毫秒级时间戳; 复选框Checkbox：填写 true 或 false; 条码Barcode：填写条码值; 人员User：填写用户的open_id、union_id 或 user_id，类型需要与 user_id_type 指定的类型一致; 电话号码Phone：填写文本内容, 纯数字; 超链接Url：遵循格式 { text: '链接文本', link: 'https://www.123.com' }; 附件Attachment：FileSchema, 填写附件 token，需要先调用上传素材或分片上传素材接口将附件上传至该多维表格中; 单向关联Lookup：数组，填写被关联表的记录 ID; 双向关联DuplexLink：数组，填写被关联表的记录 ID; 地理位置Location：填写经纬度坐标，用,拼接，例如"123.124,123.124"`);
 
 export const CreateBatchRecordArgsSchema = z.object({
   path: CommonTableArgsSchema,
