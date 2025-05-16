@@ -23,7 +23,7 @@ export const TableSchema = z.object({
   name: z.string(),
   description: z.string().optional(),
   primaryFieldId: z.string(),
-  fields: z.array(FieldSchema.and(z.object({ id: z.string() }))),
+  fields: z.array(FieldSchema),
   // views: z.array(ViewSchema),
 });
 
@@ -38,20 +38,17 @@ export const BaseSchemaResponseSchema = z.object({
 
 export const CommonTableArgsSchema = z.object({
   table_id: z.string(),
-  app_token: z.string(),
+  // app_token: z.string(),
   // user_access_token: z.string(),  
 });
 
 export const CreateTableArgsSchema = z.object({
   table: z.object({
     name: z.string(),
-    fields: z.array(FieldSchema).describe(`Table fields. Rules:
-      - At least one field must be specified.
-      - The type of the primary (first) field must be one of: 1, 2, 5, 13, 15, 20, 22.
-      `),
+    fields: z.array(FieldSchema).describe(`Table fields. Rules: At least one field must be specified. The type of the primary (first) field must be one of: 1, 2, 5, 13, 15, 20, 22.`),
   }),
   // user_access_token: z.string(),
-  app_token: z.string(),
+  // app_token: z.string(),
 }).describe('create a table');
 
 export const CreateTableResponseSchema = z.object({
@@ -72,18 +69,18 @@ export const ListTablesResponseSchema = z.array(TableResponseSchema);
 // ========== API Argument Schemas ==========
 export const ListRecordsArgsSchema = z.object({
   table_id: z.string(),
-  app_token: z.string(),
+  // app_token: z.string(),
   // user_access_token: z.string(),
   field_names: z.string().optional().describe('Use name rather than id to specify the fields to return.It needs to be formatted as a JSON array string'),
-  sort: z.array(z.string()).optional(),
+  // sort: z.array(z.string()).optional(),
   // filter: z.string().optional().describe('eg. AND(CurrentValue.[订单号].contains("004"),CurrentValue.[订单日期]= TODAY())'),
   recordLength: z.number().optional().default(20),
 });
 
 export const ListTablesArgsSchema = z.object({
-  app_token: z.string(),
+  // app_token: z.string(),
   // user_access_token: z.string(),
-  length: z.number().optional(),
+  // length: z.number().optional(),
 });
 
 export const GetTableSchemaArgsSchema = z.object({
@@ -92,13 +89,14 @@ export const GetTableSchemaArgsSchema = z.object({
 
 
 export const RecordArgsSchema = z.object({
-  app_token: z.string(),
+  // app_token: z.string(),
   table_id: z.string(),
   record_id: z.string(),
   // user_access_token: z.string(),
 });
 
-export const CreateRecordArgsSchema = CommonTableArgsSchema.extend({
+export const CreateRecordArgsSchema = z.object({
+  table_id: z.string(),
   fields: RecordFieldsSchema,
   // user_access_token: z.string(),
 }).describe(`文本Text：填写字符串格式的值; 数字Number：填写数字格式的值; 单选SingleSelect：填写选项值，对于新的选项值，将会创建一个新的选项; 多选MultiSelect：填写多个选项值，对于新的选项值，将会创建一个新的选项。如果填写多个相同的新选项值，将会创建多个相同的选项; 日期DateTime：填写毫秒级时间戳; 复选框Checkbox：填写 true 或 false; 条码Barcode：填写条码值; 人员User：填写用户的open_id、union_id 或 user_id，类型需要与 user_id_type 指定的类型一致; 电话号码Phone：填写文本内容, 纯数字; 超链接Url：遵循格式 { text: '链接文本', link: 'https://www.123.com' }; 附件Attachment：FileSchema, 填写附件 token，需要先调用上传素材或分片上传素材接口将附件上传至该多维表格中; 单向关联Lookup：数组，填写被关联表的记录 ID; 双向关联DuplexLink：数组，填写被关联表的记录 ID; 地理位置Location：填写经纬度坐标，用,拼接，例如"123.124,123.124"`);
@@ -112,7 +110,7 @@ export const CreateBatchRecordArgsSchema = z.object({
 });
 export const UpdateRecordArgsSchema = z.object({
   path: RecordArgsSchema,
-  fields: RecordFieldsSchema,
+  fields: z.record(z.string(), z.any()).describe('fields类型与create_record的fields类型一样'),
   // user_access_token: z.string(),
 });
 
@@ -138,10 +136,7 @@ export const UpdateTableArgsSchema = z.object({
 
 export const CreateFieldArgsSchema = z.object({
   path: CommonTableArgsSchema,
-  // 嵌套一层，要不然会模型给出正确输入时client报错（cursor会报错，不知道为啥，可能对union类型支持不好）
-  data: z.object({
-    field: FieldSchema,
-  }),
+  field: z.record(z.string(), z.any()).describe('field类型与create_table的fields数组里元素类型一样'),
   // user_access_token: z.string(),
 });
 
@@ -175,15 +170,14 @@ export const ListFieldsArgsSchema = z.object({
   // user_access_token: z.string(),
 });
 
-export const CommonFieldArgsSchema = CommonTableArgsSchema.extend({
+export const CommonFieldArgsSchema = z.object({
   field_id: z.string(),
+  table_id: z.string(),
   // user_access_token: z.string(),
 });
 
 export const UpdateFieldArgsSchema = z.object({
-  data: z.object({
-    field: FieldSchema,
-  }),
+  field: z.record(z.string(), z.any()).describe('field类型与create_table的fields数组里元素类型一样'),
   path: CommonFieldArgsSchema,
   // user_access_token: z.string(),
 });
@@ -300,13 +294,13 @@ export interface AuthResponse {
 }
 
 export interface IBaseService {
-  getAuthorization(sessionId?: string): Promise<AuthResponse & { success?: boolean }>;
-  getAppToken(getAppTokenArgs: GetAppTokenArgs, sessionId?: string): Promise<AuthResponse | string>;
-  createBase(createBaseArgs: CreateBaseArgs, sessionId?: string): Promise<AuthResponse | App>;
-  updateBase(updateBaseArgs: UpdateBaseArgs, sessionId?: string): Promise<AuthResponse | App>;
-  copyBase(copyBaseArgs: CopyBaseArgs, sessionId?: string): Promise<AuthResponse | App>;
-  getBase(getBaseArgs: GetBaseArgs, sessionId?: string): Promise<AuthResponse | App>;
-  listRecords(listRecordsArgs: ListRecordsArgs, sessionId?: string): Promise<AuthResponse | BaseRecord[]>;
+  // getAuthorization(sessionId?: string): Promise<AuthResponse & { success?: boolean }>;
+  // getAppToken(getAppTokenArgs: GetAppTokenArgs, sessionId?: string): Promise<AuthResponse | string>;
+  // createBase(createBaseArgs: CreateBaseArgs, sessionId?: string): Promise<AuthResponse | App>;
+  // updateBase(updateBaseArgs: UpdateBaseArgs, sessionId?: string): Promise<AuthResponse | App>;
+  // copyBase(copyBaseArgs: CopyBaseArgs, sessionId?: string): Promise<AuthResponse | App>;
+  // getBase(getBaseArgs: GetBaseArgs, sessionId?: string): Promise<AuthResponse | App>;
+  listRecords(listRecordsArgs: ListRecordsArgs, sessionId?: string): Promise<AuthResponse | any>;
   listTables(listTablesArgs: ListTablesArgs, sessionId?: string): Promise<AuthResponse | ListTablesResponse>;
   createTable(data: CreateTableArgs, sessionId?: string): Promise<AuthResponse | TableResponse>;
   updateTable(updateTableArgs: UpdateTableArgs, sessionId?: string): Promise<AuthResponse | { name?: string }>;
@@ -319,7 +313,7 @@ export interface IBaseService {
   updateRecord(updateRecordArgs: UpdateRecordArgs, sessionId?: string): Promise<AuthResponse | BaseRecord>;
   deleteRecord(deleteRecordArgs: RecordArgs, sessionId?: string): Promise<AuthResponse | { success?: boolean }>;
   getRecord(getRecordArgs: RecordArgs, sessionId?: string): Promise<AuthResponse | BaseRecord>;
-  createBatchRecord(createBatchRecordArgs: CreateBatchRecordArgs, sessionId?: string): Promise<AuthResponse | BaseRecord[]>;
+  // createBatchRecord(createBatchRecordArgs: CreateBatchRecordArgs, sessionId?: string): Promise<AuthResponse | BaseRecord[]>;
   // getTokenOrAuthUrl(sessionId?: string): Promise<AuthResponse | { token?: string }>;
 }
 

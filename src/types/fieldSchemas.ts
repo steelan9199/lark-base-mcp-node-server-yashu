@@ -48,22 +48,58 @@ export const Type1FieldSchema = z.object({
   ui_type: z.enum(['Text', 'Email', 'Barcode']),
 }).describe('schema of fields with type 1: Text, Email, Barcode');
 
-// Merge schemas with type 2
-export const Type2FieldSchema = z.object({
+export const CurrencyFieldSchema = z.object({
   field_name: z.string(),
   type: z.literal(2),
-  ui_type: z.enum(['Number', 'Currency', 'Progress', 'Rating']),
+  ui_type: z.literal('Currency'),
   property: z.object({
-    formatter: z.nativeEnum(NumberFormatter).optional(),
     currency_code: z.nativeEnum(CurrencyCode).optional(),
-    rating: z.object({
-      symbol: z.nativeEnum(RatingSymbol).optional(),
-    }).optional(),
-  }).optional(),
-  range_customize: z.boolean().optional(),
-  min: z.number().optional(),
-  max: z.number().optional(),
-}).describe('schema of fields with type 2: Number, Currency, Progress, Rating');
+    formatter: z.nativeEnum(CurrencyPrecision).optional(),
+  }),
+}).describe('schema of a Currency field');
+
+
+export const ProgressFieldSchema = z.object({
+  field_name: z.string(),
+  type: z.literal(2),
+  ui_type: z.literal('Progress'),
+  property: z.object({
+    formatter: z.nativeEnum(ProgressNumberFormatter).optional(),
+    range_customize: z.boolean().optional(),
+    max: z.number().optional().describe('range_customize=true时，必填'),
+    min: z.number().optional().describe('range_customize=true时，必填'),
+  }),
+}).describe('schema of a Progress field');
+
+
+export const RatingFieldSchema = z.object({
+  field_name: z.string(),
+  type: z.literal(2),
+  ui_type: z.literal('Rating'),
+  property: z.object({
+    formatter: z.literal('0'),
+    symbol: z.nativeEnum(RatingSymbol).optional(),
+    max: z.number().optional().describe('1~10'),
+    min: z.number().optional().describe('0 or 1'),
+  }),
+}).describe('schema of a Rating field');
+
+// // Merge schemas with type 2
+// export const Type2FieldSchema = z.object({
+//   field_name: z.string(),
+//   type: z.literal(2),
+//   ui_type: z.enum(['Number', 'Currency', 'Progress', 'Rating']),
+//   property: z.object({
+//     formatter: z.nativeEnum(NumberFormatter).optional(),
+//     currency_code: z.nativeEnum(CurrencyCode).optional(),
+//     rating: z.object({
+//       symbol: z.nativeEnum(RatingSymbol).optional(),
+//     }).optional(),
+//   }).optional(),
+//   range_customize: z.boolean().optional(),
+//   min: z.number().optional(),
+//   max: z.number().optional(),
+// }).describe('schema of fields with type 2: Number, Currency, Progress, Rating');
 
 // Single Select Field
 export const SingleSelectfieldSchema = z.object({
@@ -87,7 +123,7 @@ export const MultiSelectfieldSchema = z.object({
   property: z.object({
     options: z.array(z.object({
       name: z.string().optional(),
-      id: z.string().optional(),
+      id: z.string().optional().describe('用于新建操作时，此字段一定不能填'),
       color: z.number().min(0).max(54).optional(),
     })).optional(),
   }).optional(),
@@ -260,7 +296,10 @@ export const AutoNumberfieldSchema = z.object({
 export const FieldSchema = z.union([
   BaseFieldSchema,
   Type1FieldSchema,
-  Type2FieldSchema,
+  CurrencyFieldSchema,
+  ProgressFieldSchema,
+  RatingFieldSchema,
+  // Type2FieldSchema,
   SingleSelectfieldSchema,
   MultiSelectfieldSchema,
   DateTimefieldSchema,

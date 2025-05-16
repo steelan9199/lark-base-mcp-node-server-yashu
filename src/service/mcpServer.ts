@@ -145,17 +145,17 @@ export class BaseMCPServer implements IBaseMCPServer {
   private async handleListTools(): Promise<ListToolsResult> {
     // 收集所有tools（包括注释掉的）inputSchema
     let tools = [
-      {
-        name: 'get_authorization',
-        description:
-          'Get authorization to generate user_access_token which is necessary for base tools calling. If this tool returns a url, use markdown to show this url as a hyperlink and guide the user to visit the URL and authorize and then use this tool again to get token. If this tool returns a user_access_token, just return the response and don"t generate a hyperlink.',
-        inputSchema: getInputSchema(z.object({})),
-      },
-      {
-        name: 'get_app_token',
-        description: 'Get app_token from a url if the user wants to operate with base',
-        inputSchema: getInputSchema(GetAppTokenArgsSchema),
-      },
+      // {
+      //   name: 'get_authorization',
+      //   description:
+      //     'Get authorization to generate user_access_token which is necessary for base tools calling. If this tool returns a url, use markdown to show this url as a hyperlink and guide the user to visit the URL and authorize and then use this tool again to get token. If this tool returns a user_access_token, just return the response and don"t generate a hyperlink.',
+      //   inputSchema: getInputSchema(z.object({})),
+      // },
+      // {
+      //   name: 'get_app_token',
+      //   description: 'Get app_token from a url if the user wants to operate with base',
+      //   inputSchema: getInputSchema(GetAppTokenArgsSchema),
+      // },
       {
         name: 'list_records',
         description: 'List records from a table',
@@ -166,16 +166,16 @@ export class BaseMCPServer implements IBaseMCPServer {
         description: 'List tables from a app',
         inputSchema: getInputSchema(ListTablesArgsSchema),
       },
-      {
-        name: 'create_base',
-        description: 'Create base app (多维表格) if the user does not provide an App token',
-        inputSchema: getInputSchema(CreateBaseArgsSchema),
-      },
-      {
-        name: 'update_base',
-        description: '更新一个base app（多维表格），如果返回了url，用markdown格式显示这个url，并引导用户访问这个url',
-        inputSchema: getInputSchema(UpdateBaseArgsSchema),
-      },
+      // {
+      //   name: 'create_base',
+      //   description: 'Create base app (多维表格) if the user does not provide an App token',
+      //   inputSchema: getInputSchema(CreateBaseArgsSchema),
+      // },
+      // {
+      //   name: 'update_base',
+      //   description: '更新一个base app（多维表格），如果返回了url，用markdown格式显示这个url，并引导用户访问这个url',
+      //   inputSchema: getInputSchema(UpdateBaseArgsSchema),
+      // },
       // {
       //   name: 'get_base',
       //   description: '获取一个base app（多维表格）的信息，如果返回了url，用markdown格式显示这个url，并引导用户访问这个url',
@@ -199,7 +199,7 @@ export class BaseMCPServer implements IBaseMCPServer {
       // },
       {
         name: 'delete_table',
-        description: 'Delete a table in a app',
+        description: 'Delete a table in a base app（多维表格）',
         inputSchema: getInputSchema(CommonTableArgsSchema),
       },
       {
@@ -252,7 +252,7 @@ export class BaseMCPServer implements IBaseMCPServer {
     // tools = JSON.parse(result.code, result);
     // console.log('handlelisttool finished', tools);
     // const inputSchemas = tools.map((tool) => tool.inputSchema);
-    logToFile(tools);
+    // logToFile(tools);
     return {
       tools,
     };
@@ -271,36 +271,37 @@ export class BaseMCPServer implements IBaseMCPServer {
         throw new Error('Session ID is required');
       }
 
+
       switch (request.params.name) {
-        case 'get_authorization': {
-          const base = await this.baseService.getAuthorization(sessionId);
-          return formatToolResponse(base);
-        }
-        case 'get_app_token': {
-          const args = GetAppTokenArgsSchema.parse(request.params.arguments);
-          const base = await this.baseService.getAppToken(args, sessionId);
-          return formatToolResponse(base);
-        }
-        case 'create_base': {
-          const args = CreateBaseArgsSchema.parse(request.params.arguments);
-          const base = await this.baseService.createBase(args, sessionId);
-          return formatToolResponse(base);
-        }
-        case 'update_base': {
-          const args = UpdateBaseArgsSchema.parse(request.params.arguments);
-          const base = await this.baseService.updateBase(args, sessionId);
-          return formatToolResponse(base);
-        }
-        case 'get_base': {
-          const args = GetBaseArgsSchema.parse(request.params.arguments);
-          const base = await this.baseService.getBase(args, sessionId);
-          return formatToolResponse(base);
-        }
-        case 'copy_base': {
-          const args = CopyBaseArgsSchema.parse(request.params.arguments);
-          const base = await this.baseService.copyBase(args, sessionId);
-          return formatToolResponse(base);
-        }
+        // case 'get_authorization': {
+        //   const base = await this.baseService.getAuthorization(sessionId);
+        //   return formatToolResponse(base);
+        // }
+        // case 'get_app_token': {
+        //   const args = GetAppTokenArgsSchema.parse(request.params.arguments);
+        //   const base = await this.baseService.getAppToken(args, sessionId);
+        //   return formatToolResponse(base);
+        // }
+        // case 'create_base': {
+        //   const args = CreateBaseArgsSchema.parse(request.params.arguments);
+        //   const base = await this.baseService.createBase(args, sessionId);
+        //   return formatToolResponse(base);
+        // }
+        // case 'update_base': {
+        //   const args = UpdateBaseArgsSchema.parse(request.params.arguments);
+        //   const base = await this.baseService.updateBase(args, sessionId);
+        //   return formatToolResponse(base);
+        // }
+        // case 'get_base': {
+        //   const args = GetBaseArgsSchema.parse(request.params.arguments);
+        //   const base = await this.baseService.getBase(args, sessionId);
+        //   return formatToolResponse(base);
+        // }
+        // case 'copy_base': {
+        //   const args = CopyBaseArgsSchema.parse(request.params.arguments);
+        //   const base = await this.baseService.copyBase(args, sessionId);
+        //   return formatToolResponse(base);
+        // }
         case 'list_tables': {
           const args = ListTablesArgsSchema.parse(request.params.arguments);
           const records = await this.baseService.listTables(args, sessionId);
