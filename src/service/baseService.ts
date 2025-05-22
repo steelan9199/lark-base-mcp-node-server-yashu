@@ -2,10 +2,6 @@
 /* eslint-disable no-restricted-syntax */
 import {
   IBaseService,
-  BaseRecord,
-  FieldSet,
-  Field,
-  Table,
   CreateTableArgs,
   CreateTableResponse,
   CreateBaseArgs,
@@ -14,7 +10,6 @@ import {
   CopyBaseArgs,
   ListRecordsArgs,
   ListTablesArgs,
-  CommonTableArgsSchema,
   CommonTableArgs,
   ListFieldsArgs,
   CreateFieldArgs,
@@ -25,16 +20,11 @@ import {
   UpdateRecordArgs,
   RecordArgs,
   CreateBatchRecordArgs,
-  GetAppTokenArgs,
-  AuthResponse
 } from '../types/types.js';
 import { FieldType } from '../types/enums.js';
 import { sessionManager } from './sessionManager.js';
 // import { Client, withUserAccessToken } from '@larksuiteoapi/node-sdk';
 import { BaseClient } from '@lark-base-open/node-sdk';
-
-
-const maxRecordLength = 100;
 
 // 发npm包先写死，后续优化
 const isDev = true;
@@ -65,18 +55,14 @@ export class BaseService implements IBaseService {
         appToken: this._appToken,
         personalBaseToken: this._personalBaseToken,
         logger: {
-          info: (...args: any[]) => {
-          },
+          info: (...args: any[]) => {},
           error: (...args: any[]) => {
             console.error(...args);
           },
-          warn: (...args: any[]) => {
-          },
-          debug: (...args: any[]) => {
-          },
-          trace: (...args: any[]) => {
-          }
-        }
+          warn: (...args: any[]) => {},
+          debug: (...args: any[]) => {},
+          trace: (...args: any[]) => {},
+        },
       });
     }
   }
@@ -99,177 +85,10 @@ export class BaseService implements IBaseService {
     });
   }
 
-  async getAuthorization(sessionId?: string) {
-    const { token, authUrl, message } = await this.getTokenOrAuthUrl(sessionId);
-
-    // token 不对外暴露
-    if (token) {
-      return {
-        success: true,
-      };
-    }
-    return {
-      authUrl,
-      message,
-    };
-  }
-
-  // async getAppToken(args: GetAppTokenArgs, sessionId?: string): Promise<string | AuthResponse> {
-  //   // const { token, authUrl, message } = await this.getTokenOrAuthUrl(sessionId);
-  //   // if (authUrl) {
-  //   //   return { authUrl, message };
-  //   // }
-
-  //   const client = this.getClient(sessionId);
-  //   const url = new URL(args.url);
-  //   if (url.pathname.startsWith('/wiki/')) {
-  //     const wikiToken = url.pathname.split('/wiki/')[1];
-  //     if (wikiToken) {
-  //       const res = await client.space.getNode({
-  //         params: {
-  //           token: wikiToken,
-  //         },
-  //       }, withUserAccessToken(token || ''));
-        
-  //       if (res?.code !== 0) {
-  //         throw new Error(`Failed to get wiki space: ${JSON.stringify(res)}`);
-  //       }
-  //       return res.data?.node?.node_token || '';
-  //     }
-  //     throw new Error('Invalid wiki url');
-  //   } else if (url.pathname.startsWith('/base/')) {
-  //     const baseToken = url.pathname.split('/base/')[1].split('?')[0];
-  //     if (baseToken) {
-  //       return baseToken;
-  //     }
-  //     throw new Error('Invalid base url');
-  //   }
-  //   throw new Error('URL not supported');
-  // }
-
-  private async getTokenOrAuthUrl(sessionId?: string) {
-    let token = sessionManager.getUserAccessToken(sessionId) || '';
-    if (!token) {
-      const res = await this._client?.httpInstance.get(BASE_AUTHORIZE_URL + `?sessionId=${sessionId}`, {
-        headers: {
-          'x-tt-env': 'boe_mcp_authorize',
-        },
-      });
-  
-      if (res.data.userAccessToken) {
-        token = res.data.userAccessToken;
-      } else if (res.data.authenticationUrl) {
-        return {
-          authUrl: res.data.authenticationUrl,
-          message: '引导用户先访问链接进行时授权，用户授权完成后尝试再次调用本工具' + `, ${JSON.stringify(sessionId)}}`,
-        };
-      } else {
-        throw new Error(`Failed to get authorization: ${JSON.stringify(res)}`);
-      }
-    }
-    if (token && sessionId) {
-      sessionManager.setUserAccessToken(sessionId, token);
-    }
-    return { token };
-  }
-
-  // async createBase(args: CreateBaseArgs, sessionId?: string) {
-  //   const { token, authUrl, message } = await this.getTokenOrAuthUrl(sessionId);
-  //   if (authUrl || !token) {
-  //     return { authUrl, message, sessionId };
-  //   }
-  //   const res = await this._client.bitable.v1.app.create(
-  //     {
-  //       data: {
-  //         name: args.name,
-  //         folder_token: args.folder_token,
-  //       },
-  //     },
-  //     withUserAccessToken(token || '')
-  //   ).catch((err) => {
-
-  //     throw new Error(`Failed to create base catch: ${JSON.stringify(err)}, ${JSON.stringify(sessionId)}, ${JSON.stringify(token)}`);
-  //   })
-
-  //   if (res?.code != 0) {
-  //     throw new Error(`Failed to create base: ${JSON.stringify(res)}, ${JSON.stringify(sessionId)}, ${JSON.stringify(token)}`);
-  //   }
-  //   return res.data?.app!;
-  // }
-
-  // async updateBase(args: UpdateBaseArgs, sessionId?: string) {
-  //   const { token, authUrl, message } = await this.getTokenOrAuthUrl(sessionId);
-  //   if (authUrl) {
-  //     return { authUrl, message };
-  //   }
-  //   const res = await this._client.bitable.v1.app.update(
-  //     {
-  //       data: {
-  //         name: args.name
-  //       },
-  //       path: {
-  //         app_token: args.app_token,
-  //       }
-  //     },
-  //     withUserAccessToken(token || ''),
-  //   );
-
-  //   if (res?.code != 0) {
-  //     throw new Error(`Failed to update base: ${res?.msg}`);
-  //   }
-  //   return res.data?.app!;
-  // }
-
-  // async getBase(args: GetBaseArgs, sessionId?: string) {
-  //   const { token, authUrl, message } = await this.getTokenOrAuthUrl(sessionId);
-  //   if (authUrl) {
-  //     return { authUrl, message };
-  //   }
-  //   const res = await this._client.bitable.v1.app.get({
-  //     path: {
-  //       app_token: args.app_token,
-  //     },
-  //   }, withUserAccessToken(token || ''));
-
-  //   if (res?.code != 0) {
-  //     throw new Error(`Failed to get Base: ${res?.msg}`);
-  //   }
-  //   return res.data?.app!;
-  // }
-
-  // async copyBase(args: CopyBaseArgs, sessionId?: string) {
-  //   const { token, authUrl, message } = await this.getTokenOrAuthUrl(sessionId);
-  //   if (authUrl) {
-  //     return { authUrl, message };
-  //   }
-  //   const res = await this._client.bitable.v1.app.copy({
-  //     data: {
-  //       folder_token: args.folder_token,
-  //     },
-  //     path: {
-  //       app_token: args.app_token,
-  //     },
-  //   }, withUserAccessToken(token || ''));
-
-  //   if (res?.code != 0) {
-  //     throw new Error(`Failed to copy base: ${res?.msg}`);
-  //   }
-  //   return {
-  //     base: res.data?.app,
-  //   };
-  // }
-
   async listRecords(args: ListRecordsArgs, sessionId?: string) {
-    // const { token, authUrl, message } = await this.getTokenOrAuthUrl(sessionId);
-    // if (authUrl) {
-    //   return { authUrl, message };
-    // }
-    
     const client = this.getClient();
     const params = {
       page_size: 10,
-      // sort: args.sort,
-      // filter: args.filter,
       field_names: args.field_names,
     };
 
@@ -298,10 +117,6 @@ export class BaseService implements IBaseService {
 
   async listTables(args: ListTablesArgs, sessionId?: string) {
     const client = this.getClient();
-    // const { token, authUrl, message } = await this.getTokenOrAuthUrl(sessionId);
-    // if (authUrl) {
-    //   return { authUrl, message };
-    // }
     const tables = [];
 
     try {
@@ -313,9 +128,6 @@ export class BaseService implements IBaseService {
         if (item?.items) {
           tables.push(...item.items);
         }
-        // if (args.length && tables.length >= args.length) {
-        //   break;
-        // }
       }
     } catch (error) {
       throw new Error(`Failed to list tables: ${error}`);
@@ -325,10 +137,6 @@ export class BaseService implements IBaseService {
   }
 
   async deleteTable(args: CommonTableArgs, sessionId?: string) {
-    const { token, authUrl, message } = await this.getTokenOrAuthUrl(sessionId);
-    // if (authUrl) {
-    //   return { authUrl, message };
-    // }
     const client = this.getClient();
     const { data, code, msg } = await client.base.appTable.delete({
       path: args,
@@ -342,10 +150,6 @@ export class BaseService implements IBaseService {
   }
 
   async updateTable(args: UpdateTableArgs, sessionId?: string) {
-    const { token, authUrl, message } = await this.getTokenOrAuthUrl(sessionId);
-    // if (authUrl) {
-    //   return { authUrl, message };
-    // }
     const client = this.getClient();
     const { data, code, msg } = await client.base.appTable.patch({
       data: {
@@ -361,21 +165,16 @@ export class BaseService implements IBaseService {
     return data?.name ? { name: data?.name } : {};
   }
 
-
   async listFields(args: ListFieldsArgs, sessionId?: string) {
-    // const { token, authUrl, message } = await this.getTokenOrAuthUrl(sessionId);
-    // if (authUrl) {
-    //   return { authUrl, message };
-    // }
     const client = this.getClient();
     const fields = [];
     for await (const item of await client.base.appTableField.listWithIterator({
-      path: args.path
+      path: args.path,
     })) {
       if (item?.items) {
         fields.push(...item.items);
       }
-      if (args.length &&fields.length >= args.length) {
+      if (args.length && fields.length >= args.length) {
         break;
       }
     }
@@ -386,10 +185,6 @@ export class BaseService implements IBaseService {
   }
 
   async createField(createFieldArgs: CreateFieldArgs, sessionId?: string) {
-    // const { token, authUrl, message } = await this.getTokenOrAuthUrl(sessionId);
-    // if (authUrl) {
-    //   return { authUrl, message };
-    // }
     const client = this.getClient();
     const { data, code, msg } = await client.base.appTableField.create({
       //@ts-expect-error
@@ -405,10 +200,6 @@ export class BaseService implements IBaseService {
   }
 
   async deleteField(args: CommonFieldArgs, sessionId?: string) {
-    // const { token, authUrl, message } = await this.getTokenOrAuthUrl(sessionId);
-    // if (authUrl) {
-    //   return { authUrl, message };
-    // }
     const client = this.getClient();
     const { data, code, msg } = await client.base.appTableField.delete({
       path: args,
@@ -422,10 +213,6 @@ export class BaseService implements IBaseService {
   }
 
   async updateField(args: UpdateFieldArgs, sessionId?: string) {
-    // const { token, authUrl, message } = await this.getTokenOrAuthUrl(sessionId);
-    // if (authUrl) {
-    //   return { authUrl, message };
-    // }
     const client = this.getClient();
     const data = await client.base.appTableField.update({
       //@ts-expect-error
@@ -441,10 +228,6 @@ export class BaseService implements IBaseService {
   }
 
   async createRecord(args: CreateRecordArgs, sessionId?: string) {
-      // const { token, authUrl, message } = await this.getTokenOrAuthUrl(sessionId);
-      // if (authUrl) {
-      //   return { authUrl, message };
-      // }
     const client = this.getClient();
     const data = await client.base.appTableRecord.create({
       data: {
@@ -455,7 +238,6 @@ export class BaseService implements IBaseService {
       },
     });
 
-
     if (data.code != 0) {
       throw new Error(`Failed to create record: ${JSON.stringify(data)}`);
     }
@@ -464,10 +246,6 @@ export class BaseService implements IBaseService {
   }
 
   async updateRecord(args: UpdateRecordArgs, sessionId?: string) {
-    // const { token, authUrl, message } = await this.getTokenOrAuthUrl(sessionId);
-    // if (authUrl) {
-    //   return { authUrl, message };
-    // }
     const client = this.getClient();
     const data = await client.base.appTableRecord.update({
       data: {
@@ -484,10 +262,6 @@ export class BaseService implements IBaseService {
   }
 
   async deleteRecord(args: RecordArgs, sessionId?: string) {
-    // const { token, authUrl, message } = await this.getTokenOrAuthUrl(sessionId);
-    // if (authUrl) {
-    //   return { authUrl, message };
-    // }
     const client = this.getClient();
     const { data, code, msg } = await client.base.appTableRecord.delete({
       path: args,
@@ -501,10 +275,6 @@ export class BaseService implements IBaseService {
   }
 
   async getRecord(args: RecordArgs, sessionId?: string) {
-    // const { token, authUrl, message } = await this.getTokenOrAuthUrl(sessionId);
-    // if (authUrl) {
-    //   return { authUrl, message };
-    // }
     const client = this.getClient();
     const { data, code, msg } = await client.base.appTableRecord.get({
       path: args,
@@ -518,10 +288,6 @@ export class BaseService implements IBaseService {
   }
 
   async createBatchRecord(args: CreateBatchRecordArgs, sessionId?: string) {
-      // const { token, authUrl, message } = await this.getTokenOrAuthUrl(sessionId);
-      // if (authUrl) {
-      //   return { authUrl, message };
-      // }
     const client = this.getClient();
     const { data, code, msg } = await client.base.appTableRecord.batchCreate({
       data: {
@@ -538,16 +304,12 @@ export class BaseService implements IBaseService {
   }
 
   async createTable(args: CreateTableArgs, sessionId?: string) {
-    // const { token, authUrl, message } = await this.getTokenOrAuthUrl(sessionId);
-    // if (authUrl) {
-    //   return { authUrl, message };
-    // }
     const client = this.getClient();
     const data = await client.base.appTable.create({
       data: {
         // @ts-expect-error sdk此api目前ui_type枚举值类型没对齐开放平台和其他api（少了个email），先忽略
         table: args.table,
-      }
+      },
     });
 
     if (data.code != 0 || !data.data?.table_id || !data.data.field_id_list?.length) {

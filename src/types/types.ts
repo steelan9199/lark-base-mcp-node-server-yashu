@@ -39,17 +39,23 @@ export const BaseSchemaResponseSchema = z.object({
 export const CommonTableArgsSchema = z.object({
   table_id: z.string(),
   // app_token: z.string(),
-  // user_access_token: z.string(),  
+  // user_access_token: z.string(),
 });
 
-export const CreateTableArgsSchema = z.object({
-  table: z.object({
-    name: z.string(),
-    fields: z.array(FieldSchema).describe(`Table fields. Rules: At least one field must be specified. The type of the primary (first) field must be one of: 1, 2, 5, 13, 15, 20, 22.`),
-  }),
-  // user_access_token: z.string(),
-  // app_token: z.string(),
-}).describe('create a table');
+export const CreateTableArgsSchema = z
+  .object({
+    table: z.object({
+      name: z.string(),
+      fields: z
+        .array(FieldSchema)
+        .describe(
+          `Table fields. Rules: At least one field must be specified. The type of the primary (first) field must be one of: 1, 2, 5, 13, 15, 20, 22.`,
+        ),
+    }),
+    // user_access_token: z.string(),
+    // app_token: z.string(),
+  })
+  .describe('create a table');
 
 export const CreateTableResponseSchema = z.object({
   table_id: z.string().optional(),
@@ -65,13 +71,15 @@ export const TableResponseSchema = z.object({
 
 export const ListTablesResponseSchema = z.array(TableResponseSchema);
 
-
 // ========== API Argument Schemas ==========
 export const ListRecordsArgsSchema = z.object({
   table_id: z.string(),
   // app_token: z.string(),
   // user_access_token: z.string(),
-  field_names: z.string().optional().describe('Use name rather than id to specify the fields to return.It needs to be formatted as a JSON array string'),
+  field_names: z
+    .string()
+    .optional()
+    .describe('Use name rather than id to specify the fields to return.It needs to be formatted as a JSON array string'),
   // sort: z.array(z.string()).optional(),
   // filter: z.string().optional().describe('eg. AND(CurrentValue.[订单号].contains("004"),CurrentValue.[订单日期]= TODAY())'),
   recordLength: z.number().optional().default(20),
@@ -87,7 +95,6 @@ export const GetTableSchemaArgsSchema = z.object({
   table_id: z.string(),
 });
 
-
 export const RecordArgsSchema = z.object({
   // app_token: z.string(),
   table_id: z.string(),
@@ -95,17 +102,23 @@ export const RecordArgsSchema = z.object({
   // user_access_token: z.string(),
 });
 
-export const CreateRecordArgsSchema = z.object({
-  table_id: z.string(),
-  fields: RecordFieldsSchema,
-  // user_access_token: z.string(),
-}).describe(`文本Text：填写字符串格式的值; 数字Number：填写数字格式的值; 单选SingleSelect：填写选项值，对于新的选项值，将会创建一个新的选项; 多选MultiSelect：填写多个选项值，对于新的选项值，将会创建一个新的选项。如果填写多个相同的新选项值，将会创建多个相同的选项; 日期DateTime：填写毫秒级时间戳; 复选框Checkbox：填写 true 或 false; 条码Barcode：填写条码值; 人员User：填写用户的open_id、union_id 或 user_id，类型需要与 user_id_type 指定的类型一致; 电话号码Phone：填写文本内容, 纯数字; 超链接Url：遵循格式 { text: '链接文本', link: 'https://www.123.com' }; 附件Attachment：FileSchema, 填写附件 token，需要先调用上传素材或分片上传素材接口将附件上传至该多维表格中; 单向关联Lookup：数组，填写被关联表的记录 ID; 双向关联DuplexLink：数组，填写被关联表的记录 ID; 地理位置Location：填写经纬度坐标，用,拼接，例如"123.124,123.124"`);
+export const CreateRecordArgsSchema = z
+  .object({
+    table_id: z.string(),
+    fields: RecordFieldsSchema,
+    // user_access_token: z.string(),
+  })
+  .describe(
+    `文本Text：填写字符串格式的值; 数字Number：填写数字格式的值; 单选SingleSelect：填写选项值，对于新的选项值，将会创建一个新的选项; 多选MultiSelect：填写多个选项值，对于新的选项值，将会创建一个新的选项。如果填写多个相同的新选项值，将会创建多个相同的选项; 日期DateTime：填写毫秒级时间戳; 复选框Checkbox：填写 true 或 false; 条码Barcode：填写条码值; 人员User：填写用户的open_id、union_id 或 user_id，类型需要与 user_id_type 指定的类型一致; 电话号码Phone：填写文本内容, 纯数字; 超链接Url：遵循格式 { text: '链接文本', link: 'https://www.123.com' }; 附件Attachment：FileSchema, 填写附件 token，需要先调用上传素材或分片上传素材接口将附件上传至该多维表格中; 单向关联Lookup：数组，填写被关联表的记录 ID; 双向关联DuplexLink：数组，填写被关联表的记录 ID; 地理位置Location：填写经纬度坐标，用,拼接，例如"123.124,123.124"`,
+  );
 
 export const CreateBatchRecordArgsSchema = z.object({
   path: CommonTableArgsSchema,
-  records: z.array(z.object({
-    fields: RecordFieldsSchema,
-  })),
+  records: z.array(
+    z.object({
+      fields: RecordFieldsSchema,
+    }),
+  ),
   // user_access_token: z.string(),
 });
 export const UpdateRecordArgsSchema = z.object({
@@ -191,7 +204,6 @@ export const AppSchema = z.object({
   formula_type: z.number().optional(),
   advance_version: z.enum(['v1', 'v2']).optional(),
 });
-
 
 // ========== Type Definitions ==========
 export type ListTablesResponse = z.infer<typeof ListTablesResponseSchema>;
@@ -294,12 +306,6 @@ export interface AuthResponse {
 }
 
 export interface IBaseService {
-  // getAuthorization(sessionId?: string): Promise<AuthResponse & { success?: boolean }>;
-  // getAppToken(getAppTokenArgs: GetAppTokenArgs, sessionId?: string): Promise<AuthResponse | string>;
-  // createBase(createBaseArgs: CreateBaseArgs, sessionId?: string): Promise<AuthResponse | App>;
-  // updateBase(updateBaseArgs: UpdateBaseArgs, sessionId?: string): Promise<AuthResponse | App>;
-  // copyBase(copyBaseArgs: CopyBaseArgs, sessionId?: string): Promise<AuthResponse | App>;
-  // getBase(getBaseArgs: GetBaseArgs, sessionId?: string): Promise<AuthResponse | App>;
   listRecords(listRecordsArgs: ListRecordsArgs, sessionId?: string): Promise<AuthResponse | any>;
   listTables(listTablesArgs: ListTablesArgs, sessionId?: string): Promise<AuthResponse | ListTablesResponse>;
   createTable(data: CreateTableArgs, sessionId?: string): Promise<AuthResponse | TableResponse>;
@@ -313,8 +319,6 @@ export interface IBaseService {
   updateRecord(updateRecordArgs: UpdateRecordArgs, sessionId?: string): Promise<AuthResponse | BaseRecord>;
   deleteRecord(deleteRecordArgs: RecordArgs, sessionId?: string): Promise<AuthResponse | { success?: boolean }>;
   getRecord(getRecordArgs: RecordArgs, sessionId?: string): Promise<AuthResponse | BaseRecord>;
-  // createBatchRecord(createBatchRecordArgs: CreateBatchRecordArgs, sessionId?: string): Promise<AuthResponse | BaseRecord[]>;
-  // getTokenOrAuthUrl(sessionId?: string): Promise<AuthResponse | { token?: string }>;
 }
 
 export interface IBaseMCPServer {
