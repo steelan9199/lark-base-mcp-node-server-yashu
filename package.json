@@ -15,7 +15,7 @@
   ],
   "bin": "dist/index.js",
   "scripts": {
-    "dev": "NODE_ENV=development npm run build && node ./dist/index.js",
+    "dev": "NODE_ENV=development npm run build && node ./dist/index.sse.js",
     "start": "NODE_ENV=production node ./dist/index.js",
     "test": "vitest run",
     "test:watch": "vitest --watch",
