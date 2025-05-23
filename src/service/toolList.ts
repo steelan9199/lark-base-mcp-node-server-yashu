@@ -13,6 +13,7 @@ import {
   CommonFieldArgsSchema,
   CommonTableArgsSchema,
   RecordArgsSchema,
+  UpdateTableArgsSchema,
 } from '../types/types.js';
 
 export enum EToolType {
@@ -67,11 +68,11 @@ export const toolList = [
       '在一个base app（多维表格） 中创建表单。需要事先获取app token。让用户直接提供app token或者一个base的url，如果没有，用creat_base创建一个app获取app token， 不要伪造app token',
     inputSchema: getInputSchema(CreateTableArgsSchema),
   },
-  // {
-  //   name: EToolType.UpdateTable,
-  //   description: '更新一个base app（多维表格）中的表单，如果返回了url，用markdown格式显示这个url，并引导用户访问这个url',
-  //   inputSchema: getInputSchema(UpdateTableArgsSchema),
-  // },
+  {
+    name: EToolType.UpdateTable,
+    description: '更新一个base app（多维表格）中的表单，如果返回了url，用markdown格式显示这个url，并引导用户访问这个url',
+    inputSchema: getInputSchema(UpdateTableArgsSchema),
+  },
   {
     name: EToolType.DeleteTable,
     description: 'Delete a table in a base app（多维表格）',
