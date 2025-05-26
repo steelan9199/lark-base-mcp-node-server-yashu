@@ -48,10 +48,10 @@ In your MCP server configuration file, add the following:
 You need get two tokens before using this mcp server.
 
 - personalBaseToken: find Base Plugin UI in your base, and access Custom Plugin->Get Authorization Code
-![Video](https://lf3-static.bytednsdoc.com/obj/eden-cn/uvpzulael_lzhi/ljhwZthlaukjlkulzlp/2025h1/MCP%20%E8%B5%84%E6%BA%90/%E9%A3%9E%E4%B9%A620250526-210102.mp4)
+![Video](https://lf3-static.bytednsdoc.com/obj/eden-cn/uvpzulael_lzhi/ljhwZthlaukjlkulzlp/2025h1/MCP%20%E8%B5%84%E6%BA%90/20250526-220845.gif)
 
-- appToken: You can obtain the `appToken` quickly through a **Developer Tool** plugin. Here’s a simplified step-by-step process on how to do it:
-![Video](https://lf3-static.bytednsdoc.com/obj/eden-cn/uvpzulael_lzhi/ljhwZthlaukjlkulzlp/2025h1/MCP%20%E8%B5%84%E6%BA%90/%E9%A3%9E%E4%B9%A620250526-210107.mp4)
+- appToken: You can obtain the `appToken` quickly through a **Developement Tool** plugin. Here’s a simplified step-by-step process on how to do it:
+![Video](https://lf3-static.bytednsdoc.com/obj/eden-cn/uvpzulael_lzhi/ljhwZthlaukjlkulzlp/2025h1/MCP%20%E8%B5%84%E6%BA%90/20250526-221211.gif)
 
 ## Components
 
