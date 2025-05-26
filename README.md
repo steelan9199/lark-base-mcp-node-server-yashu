@@ -2,9 +2,26 @@
 
 A Model Context Protocol server that provides read and write access to Feishu Base (飞书多维表格) databases. This server enables LLMs to inspect database schemas, then read and write records.
 
-## Usage
+## Usage  
+### 1. Install Node.js
 
-To use this server with a mcp client.
+Make sure Node.js is installed on your machine.
+
+### 2. Obtain Base Tokens
+
+Get the `appToken` and `personalBaseToken` for your base account.
+
+### 3. Install MCP Server Package Globally
+
+Install the MCP server package globally using npm:
+
+```bash
+npm install -g @lark-base-open/mcp-node-server
+```
+
+### 4. MCP Server Configuration
+
+In your MCP server configuration file, add the following:
 
 ```json
 {
@@ -12,10 +29,10 @@ To use this server with a mcp client.
     "base-mcp-server": {
       "command": "npx",
       "args": [
-        "@bitable/base-mcp-server",
+        "@lark-base-open/mcp-node-server",
         "-a",
-        "app token of base",
-        "-p"
+        "appToken of base",
+        "-p",
         "personalBaseToken of base"
       ]
     }
@@ -23,11 +40,18 @@ To use this server with a mcp client.
 }
 ```
 
+
+**Note**: If you are using **Claude**, you will need to add the MCP configuration through the **Developer** option in the **Claude client settings**. You can access this in the **Settings** menu, and then add the MCP server details under the relevant section.
+
+
 ## tokens
 You need get two tokens before using this mcp server.
 
 - personalBaseToken: find Base Plugin UI in your base, and access Custom Plugin->Get Authorization Code
-- appToken: You can find it in the base URL when it looks like https://xxx.feishu.cn/base/{app_token}, or you can query it using the wiki token through this API: [Get Node API](https://open.larkoffice.com/document/server-docs/docs/wiki-v2/space-node/get_node?appId=cli_a774ad630b26d00d)
+![Video](https://lf3-static.bytednsdoc.com/obj/eden-cn/uvpzulael_lzhi/ljhwZthlaukjlkulzlp/2025h1/MCP%20%E8%B5%84%E6%BA%90/%E9%A3%9E%E4%B9%A620250526-210102.mp4)
+
+- appToken: You can obtain the `appToken` quickly through a **Developer Tool** plugin. Here’s a simplified step-by-step process on how to do it:
+![Video](https://lf3-static.bytednsdoc.com/obj/eden-cn/uvpzulael_lzhi/ljhwZthlaukjlkulzlp/2025h1/MCP%20%E8%B5%84%E6%BA%90/%E9%A3%9E%E4%B9%A620250526-210107.mp4)
 
 ## Components
 

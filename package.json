@@ -1,11 +1,11 @@
 {
-  "name": "@bitable/base-mcp-server",
-  "version": "0.0.1-alpha.14",
+  "name": "@lark-base-open/mcp-node-server",
+  "version": "0.0.1-alpha.3",
   "description": "Base MCP Server",
   "author": "",
   "repository": {
     "type": "git",
-    "url": "https://code.byted.org/ee/base-mcp-server.git"
+    "url": "https://github.com/Lark-Base-Team/lark-base-mcp-node-server"
   },
   "type": "module",
   "main": "dist/index.js",
