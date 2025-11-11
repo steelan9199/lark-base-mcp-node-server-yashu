@@ -28,14 +28,25 @@ const UrlFieldValueSchema = z.object({
   link: z.string().optional()
 }).describe('URL类型, ui_type=Url');
 
-const AttachmentFieldValueSchema = z.object({
+// const AttachmentFieldValueSchema = z.object({
+//   file_token: z.string().optional(),
+//   name: z.string().optional(),
+//   type: z.string().optional(),
+//   size: z.number().optional(),
+//   url: z.string().optional(),
+//   tmp_url: z.string().optional()
+// }).describe('附件类型, ui_type=Attachment');
+
+
+const AttachmentFieldValueSchema = z.array(z.object({
   file_token: z.string().optional(),
   name: z.string().optional(),
   type: z.string().optional(),
   size: z.number().optional(),
   url: z.string().optional(),
   tmp_url: z.string().optional()
-}).describe('附件类型, ui_type=Attachment');
+})).describe('附件类型, ui_type=Attachment');
+
 
 // 文本链接类型
 const TextLinkFieldValueSchema = z.object({
